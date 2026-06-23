@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { calcLoc } from "@/lib/calc";
 import SignOutButton from "@/components/sign-out-button";
+import ThemePicker from "@/components/theme-picker";
 
 function fmt(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs hidden sm:block" style={{ color: "var(--muted)" }}>{user.email}</span>
+          <ThemePicker />
           <SignOutButton />
         </div>
       </header>

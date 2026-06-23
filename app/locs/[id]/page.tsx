@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import ThemePicker from "@/components/theme-picker";
 import { calcLoc } from "@/lib/calc";
 import LocDashboard from "./loc-dashboard";
 
@@ -61,6 +62,7 @@ export default async function LocPage({ params }: { params: Promise<{ id: string
           <h1 className="text-sm font-bold truncate" style={{ color: "var(--txt-hi)" }}>{loc.name}</h1>
           <p className="text-xs" style={{ color: "var(--muted)" }}>{loc.lender_name} → {loc.borrower_name}</p>
         </div>
+        <ThemePicker />
         <span className="text-xs rounded-full px-2 py-0.5 font-semibold flex-shrink-0" style={{
           background: membership.role === "owner" ? "rgba(91,92,246,0.15)" : "rgba(71,85,105,0.15)",
           color: membership.role === "owner" ? "var(--accent-hi)" : "var(--muted-hi)",
