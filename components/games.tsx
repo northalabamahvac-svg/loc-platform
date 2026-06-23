@@ -45,7 +45,7 @@ function SnakeGame({ onClose }: { onClose: () => void }) {
       score: 0, state: "waiting", animId: 0, tick: 0, best: getHi(),
     };
 
-    const SPEED_START = isMobile() ? 18 : 28;
+    const SPEED_START = isMobile() ? 15 : 28;
 
     const placeFood = () => {
       let f: { x: number; y: number };
@@ -185,7 +185,7 @@ function FlappyGame({ onClose }: { onClose: () => void }) {
     const ctx = canvas.getContext("2d")!;
     // Physics in px/s and px/s² — delta-time based so 60Hz and 120Hz feel identical
     const mobile = isMobile();
-    const GRAVITY = mobile ? 900 : 1300, FLAP_V = mobile ? -360 : -480, PIPE_W = 55, GAP = mobile ? 220 : 195, SPEED = mobile ? 240 : 380;
+    const GRAVITY = mobile ? 1050 : 1300, FLAP_V = mobile ? -390 : -480, PIPE_W = 55, GAP = mobile ? 240 : 195, SPEED = mobile ? 240 : 380;
     const BIRD_X = Math.round(W * 0.28), BIRD_R = 20;
     const HS_KEY = "loc-flappy-hs";
     const getHi = () => { try { return parseInt(localStorage.getItem(HS_KEY) || "0"); } catch { return 0; } };
