@@ -50,27 +50,29 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+      <main className="max-w-3xl mx-auto px-3 py-4 space-y-3" style={{ paddingBottom: 80 }}>
         {project.address && (
-          <p className="text-xs" style={{ color: "var(--muted)" }}>📍 {project.address}</p>
+          <p className="text-xs px-1" style={{ color: "var(--muted)" }}>📍 {project.address}</p>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--surfB)" }}>
+        {/* Tabs — scrollable on mobile */}
+        <div className="flex gap-1 rounded-xl p-1 overflow-x-auto" style={{ background: "var(--surfB)", scrollbarWidth: "none" }}>
           {([
-            { key: "photos", label: "📷 Photos" },
-            { key: "daily-log", label: "🤖 AI Daily Log", hide: role === "viewer" },
-            { key: "past-logs", label: "📋 Past Logs" },
-            { key: "team", label: "👥 Team", hide: role !== "owner" },
-          ] as { key: Tab; label: string; hide?: boolean }[]).filter(t => !t.hide).map(t => (
+            { key: "photos", label: "📷", fullLabel: "Photos" },
+            { key: "daily-log", label: "🤖", fullLabel: "AI Log", hide: role === "viewer" },
+            { key: "past-logs", label: "📋", fullLabel: "Past Logs" },
+            { key: "team", label: "👥", fullLabel: "Team", hide: role !== "owner" },
+          ] as { key: Tab; label: string; fullLabel: string; hide?: boolean }[]).filter(t => !t.hide).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
+              className="flex-shrink-0 flex-1 rounded-lg py-2.5 text-xs font-semibold transition-all whitespace-nowrap"
               style={{
+                minWidth: 72,
                 background: tab === t.key ? "var(--surf)" : "transparent",
                 color: tab === t.key ? "var(--txt-hi)" : "var(--muted)",
                 border: tab === t.key ? "1px solid var(--bdr)" : "1px solid transparent",
               }}>
-              {t.label}
+              <span className="sm:hidden">{t.label}</span>
+              <span className="hidden sm:inline">{t.label} {t.fullLabel}</span>
             </button>
           ))}
         </div>
@@ -162,15 +164,15 @@ function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
             <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Note (applies to all selected photos)</label>
             <input value={note} onChange={e => setNote(e.target.value)} placeholder="What does this show? (e.g. existing ductwork before demo)" style={inputStyle} />
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => fileRef.current?.click()} disabled={uploading}
-              className="flex-1 rounded-xl py-3 text-sm font-bold transition-opacity disabled:opacity-50 hover:opacity-80"
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => { if (fileRef.current) { fileRef.current.removeAttribute("capture"); fileRef.current.click(); } }} disabled={uploading}
+              className="rounded-xl py-3.5 text-sm font-bold transition-opacity disabled:opacity-50 active:opacity-70"
               style={{ background: "var(--accent)", color: "#fff" }}>
-              {uploading ? "Uploading…" : "📷 Choose Photos"}
+              {uploading ? "Uploading…" : "📷 Library"}
             </button>
             <button onClick={() => { if (fileRef.current) { fileRef.current.setAttribute("capture", "environment"); fileRef.current.click(); } }}
               disabled={uploading}
-              className="rounded-xl px-4 py-3 text-sm font-bold transition-opacity disabled:opacity-50 hover:opacity-80"
+              className="rounded-xl py-3.5 text-sm font-bold transition-opacity disabled:opacity-50 active:opacity-70"
               style={{ background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--txt)" }}>
               📸 Camera
             </button>
@@ -188,12 +190,12 @@ function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
           <p className="text-sm" style={{ color: "var(--muted)" }}>No photos yet — upload your first site photo above</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {photos.map(photo => (
             <div key={photo.id} className="rounded-xl overflow-hidden relative group cursor-pointer"
               style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}
               onClick={() => setExpanded(expanded === photo.id ? null : photo.id)}>
-              <img src={photo.storage_url} alt={photo.note ?? "Site photo"} className="w-full object-cover" style={{ height: 140 }} />
+              <img src={photo.storage_url} alt={photo.note ?? "Site photo"} className="w-full object-cover" style={{ height: 130 }} />
               {photo.note && (
                 <div className="px-2 py-1.5">
                   <p className="text-xs line-clamp-2" style={{ color: "var(--txt)" }}>{photo.note}</p>
@@ -312,7 +314,7 @@ function DailyLogTab({ project, photos, userId, onSave }: {
         </p>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Crew / Workers</label>
               <input value={crew} onChange={e => setCrew(e.target.value)} placeholder="Names or count" style={{ ...inputStyle, fontSize: 13 }} />

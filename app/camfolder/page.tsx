@@ -59,8 +59,8 @@ export default async function CamFolderPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
+      <main className="max-w-4xl mx-auto px-3 py-5" style={{ paddingBottom: 80 }}>
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold" style={{ color: "var(--txt-hi)" }}>Job Site Projects</h2>
             <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>Photo documentation, AI daily logs, and field reports</p>
@@ -82,7 +82,7 @@ export default async function CamFolderPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {projects.map((p: any) => (
               <Link key={p.id} href={`/camfolder/${p.id}`}
                 className="block rounded-2xl p-5 transition-all hover:opacity-90"
