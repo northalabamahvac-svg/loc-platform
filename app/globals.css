@@ -35,6 +35,8 @@ body {
   background-size: cover;
 }
 
+::-webkit-scrollbar-track { background: var(--bg); }
+
 /* monospace numbers globally */
 .mono {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;

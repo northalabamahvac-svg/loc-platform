@@ -42,7 +42,7 @@ interface Props {
   userId: string;
 }
 
-type Tab = "overview" | "history" | "docs" | "members";
+type Tab = "overview" | "history" | "docs" | "members" | "settings";
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surfB)",
@@ -139,7 +139,10 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--surfB)" }}>
-        {(["overview", "history", "docs", "members"] as Tab[]).map(t => (
+        {(role === "owner"
+        ? (["overview", "history", "docs", "members", "settings"] as Tab[])
+        : (["overview", "history", "docs", "members"] as Tab[])
+      ).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -167,6 +170,9 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
       {tab === "members" && (
         <MembersTab members={members} locId={loc.id} role={role} currentUserId={userId} />
       )}
+      {tab === "settings" && role === "owner" && (
+        <SettingsTab loc={loc} />
+      )}
     </main>
   );
 }
@@ -182,18 +188,51 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const supabase = createClient();
 
   const recent = [...txs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const available = Math.max(0, loc.ceiling_cents - result.principal);
+  const amtCents = Math.round(parseFloat(amount) * 100) || 0;
+
+  // Live projection for payments
+  const afterPaymentOwed = mode === "payment"
+    ? Math.max(0, result.totalOwed - amtCents)
+    : null;
+
+  function validate(): string | null {
+    if (!amount || isNaN(parseFloat(amount))) return "Please enter an amount.";
+    if (amtCents <= 0) return "Amount must be greater than $0.";
+    const today = new Date().toISOString().slice(0, 10);
+    if (date > today) return "Date cannot be in the future.";
+    if (mode === "draw") {
+      if (amtCents < 100) return "Minimum draw is $1.00.";
+      if (amtCents > available) return `Draw exceeds available credit. Available: ${fmt(available)}.`;
+    }
+    if (mode === "payment") {
+      if (result.totalOwed === 0) return "There is no outstanding balance to pay.";
+      if (amtCents > result.totalOwed) return `Payment exceeds total owed (${fmt(result.totalOwed)}). Use ${fmt(result.totalOwed)} to pay in full.`;
+    }
+    return null;
+  }
+
+  function getWarning(): string {
+    if (mode === "draw" && amtCents > 0 && amtCents > loc.ceiling_cents * 0.5)
+      return `⚠ Large draw — ${((amtCents / loc.ceiling_cents) * 100).toFixed(0)}% of your credit ceiling.`;
+    if (mode === "draw" && amtCents >= 500000 && !note)
+      return "⚠ Draws over $5,000 should include a note for your records.";
+    return "";
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!mode) return;
-    setError(""); setLoading(true);
-    const cents = Math.round(parseFloat(amount) * 100);
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
+    setError(""); setWarning(""); setLoading(true);
     const { data, error: err } = await supabase
       .from("transactions")
-      .insert({ loc_id: loc.id, type: mode, amount_cents: cents, date, note: note || null })
+      .insert({ loc_id: loc.id, type: mode, amount_cents: amtCents, date, note: note || null })
       .select() as any;
     if (err) { setError(err.message); setLoading(false); return; }
     onRefresh([...txs, data[0]]);
@@ -271,6 +310,25 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
               <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Note (optional)</label>
               <input value={note} onChange={e => setNote(e.target.value)} placeholder="What is this for?" style={inputStyle} />
             </div>
+            {/* Live payment projection */}
+            {mode === "payment" && amtCents > 0 && afterPaymentOwed !== null && (
+              <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.2)" }}>
+                <span style={{ color: "var(--muted-hi)" }}>Remaining after payment: </span>
+                <span className="font-bold" style={{ color: afterPaymentOwed === 0 ? "var(--green-t)" : "var(--txt-hi)" }}>
+                  {afterPaymentOwed === 0 ? "PAID IN FULL 🎉" : fmt(afterPaymentOwed)}
+                </span>
+              </div>
+            )}
+            {/* Live draw check */}
+            {mode === "draw" && amtCents > 0 && amtCents <= available && (
+              <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "rgba(217,119,6,0.08)", border: "1px solid rgba(217,119,6,0.2)" }}>
+                <span style={{ color: "var(--muted-hi)" }}>Available after draw: </span>
+                <span className="font-bold" style={{ color: "var(--amber-t)" }}>{fmt(available - amtCents)}</span>
+              </div>
+            )}
+            {getWarning() && (
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(217,119,6,0.12)", color: "var(--amber-t)" }}>{getWarning()}</p>
+            )}
             {error && (
               <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>
             )}
@@ -380,6 +438,7 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
   const [inviteRole, setInviteRole] = useState<"owner" | "viewer">("viewer");
   const [loading, setLoading] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const supabase = createClient();
@@ -416,12 +475,27 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
     setRemoving(null);
   }
 
+  async function resendInvite(userId: string) {
+    setResending(userId); setMessage(""); setError("");
+    const res = await fetch("/api/resend-invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, locId }),
+    });
+    const json = await res.json();
+    if (!res.ok) setError(json.error ?? "Failed to resend");
+    else setMessage(`Password reset link sent to ${json.email}`);
+    setResending(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
         <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--txt-hi)" }}>
           <Users className="h-4 w-4" /> Members
         </h3>
+        {error && <p className="text-xs rounded-lg px-3 py-2 mb-3" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
+        {message && <p className="text-xs rounded-lg px-3 py-2 mb-3" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>{message}</p>}
         <div className="space-y-2">
           {members.map((m, i) => (
             <div key={m.id} className="flex items-center justify-between py-2" style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>
@@ -438,14 +512,24 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
                   {m.role}
                 </span>
                 {role === "owner" && m.user_id !== currentUserId && (
-                  <button
-                    onClick={() => removeMember(m.id)}
-                    disabled={removing === m.id}
-                    className="text-xs transition-opacity hover:opacity-70 disabled:opacity-30"
-                    style={{ color: "var(--red-t)" }}
-                  >
-                    {removing === m.id ? "…" : "Remove"}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => resendInvite(m.user_id)}
+                      disabled={resending === m.user_id}
+                      className="text-xs transition-opacity hover:opacity-70 disabled:opacity-30"
+                      style={{ color: "var(--accent-hi)" }}
+                    >
+                      {resending === m.user_id ? "Sending…" : "Resend Link"}
+                    </button>
+                    <button
+                      onClick={() => removeMember(m.id)}
+                      disabled={removing === m.id}
+                      className="text-xs transition-opacity hover:opacity-70 disabled:opacity-30"
+                      style={{ color: "var(--red-t)" }}
+                    >
+                      {removing === m.id ? "…" : "Remove"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -484,6 +568,79 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Settings Tab ──────────────────────────────────────────────────────────────
+function SettingsTab({ loc }: { loc: Loc }) {
+  const supabase = createClient();
+  const [name, setName] = useState(loc.name);
+  const [borrower, setBorrower] = useState(loc.borrower_name);
+  const [lender, setLender] = useState(loc.lender_name);
+  const [ceiling, setCeiling] = useState((loc.ceiling_cents / 100).toFixed(2));
+  const [apr, setApr] = useState((loc.apr * 100).toFixed(2));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(""); setSaving(true); setSaved(false);
+    const ceilingCents = Math.round(parseFloat(ceiling) * 100);
+    const aprVal = parseFloat(apr) / 100;
+    if (isNaN(ceilingCents) || ceilingCents <= 0) { setError("Enter a valid ceiling amount."); setSaving(false); return; }
+    if (isNaN(aprVal) || aprVal < 0 || aprVal > 2) { setError("APR must be between 0% and 200%."); setSaving(false); return; }
+    if (!name.trim()) { setError("LOC name cannot be empty."); setSaving(false); return; }
+    const { error: err } = await supabase.from("locs").update({
+      name: name.trim(),
+      borrower_name: borrower.trim(),
+      lender_name: lender.trim(),
+      ceiling_cents: ceilingCents,
+      apr: aprVal,
+    }).eq("id", loc.id);
+    if (err) { setError(err.message); } else { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-5" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+        <h3 className="text-sm font-bold mb-4" style={{ color: "var(--txt-hi)" }}>LOC Settings</h3>
+        <form onSubmit={save} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>LOC Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} placeholder="e.g. Business Line of Credit" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Borrower</label>
+              <input value={borrower} onChange={e => setBorrower(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Lender</label>
+              <input value={lender} onChange={e => setLender(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Credit Ceiling ($)</label>
+              <input type="number" step="0.01" min="1" value={ceiling} onChange={e => setCeiling(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>APR (%)</label>
+              <input type="number" step="0.01" min="0" max="200" value={apr} onChange={e => setApr(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+          {error && <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
+          {saved && <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>✓ Changes saved successfully.</p>}
+          <button type="submit" disabled={saving}
+            className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity disabled:opacity-50"
+            style={{ background: "var(--accent)", color: "#fff" }}>
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

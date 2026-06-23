@@ -52,12 +52,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       document.body.style.backgroundPosition = "center";
       document.body.style.backgroundAttachment = "fixed";
       document.body.style.backgroundRepeat = "no-repeat";
+      document.body.style.backgroundColor = "#000";
     } else {
       document.body.style.backgroundImage = DARK_BG;
-      document.body.style.backgroundSize = "";
+      document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "";
-      document.body.style.backgroundAttachment = "";
+      document.body.style.backgroundAttachment = "fixed";
       document.body.style.backgroundRepeat = "";
+      document.body.style.backgroundColor = "#08080f";
     }
     try { localStorage.setItem("loc-bg", bg); } catch {}
   }, [bg]);
