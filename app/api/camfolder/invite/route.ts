@@ -28,13 +28,21 @@ export async function POST(req: Request) {
   const target = userList?.users?.find((u: any) => u.email === email.toLowerCase().trim());
 
   if (target) {
-    // User already exists — add/update membership directly
+    // User already exists — add/update membership and generate a login link for them
     const { error } = await admin.from("cf_project_members").upsert(
       { project_id: projectId, user_id: target.id, role },
       { onConflict: "project_id,user_id" }
     );
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, existing: true });
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const { data: linkData } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email: target.email!,
+      options: { redirectTo: `${siteUrl}/auth/set-password` },
+    });
+    const link = (linkData as any)?.properties?.action_link ?? null;
+    return NextResponse.json({ ok: true, existing: true, link });
   }
 
   // User doesn't exist — generate invite link

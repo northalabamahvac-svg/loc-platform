@@ -394,7 +394,9 @@ function TeamTab({ project, userId }: { project: Project; userId: string }) {
     const json = await res.json();
     if (!res.ok) { setError(json.error ?? "Failed"); }
     else {
-      setMessage(json.existing ? `${email} added to project.` : `${email} doesn't have an account yet — copy this invite link:`);
+      setMessage(json.link
+        ? `${email} added — send them this link to set their password:`
+        : `${email} added to project.`);
       if (json.link) setInviteLink(json.link);
       setEmail("");
       const { data } = await supabase.from("cf_project_members").select("*").eq("project_id", project.id);
