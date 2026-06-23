@@ -27,40 +27,69 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">LOC Platform</h1>
-          <p className="text-sm text-gray-500 mt-1">Line of Credit Management</p>
+          <p className="text-xs font-bold tracking-[0.14em] uppercase mb-1" style={{ color: "var(--muted)" }}>
+            Blossomwood Building
+          </p>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--txt-hi)" }}>LOC Platform</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>Line of Credit Management</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Sign in</h2>
+        <div className="rounded-2xl p-6" style={{
+          background: "var(--surf)",
+          border: "1px solid var(--bdr)",
+        }}>
+          <h2 className="text-base font-semibold mb-5" style={{ color: "var(--txt-hi)" }}>Sign in</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
+                Email
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-colors"
+                style={{
+                  background: "var(--surfB)",
+                  border: "1px solid var(--bdr)",
+                  color: "var(--txt)",
+                }}
+                onFocus={e => (e.target.style.borderColor = "var(--accent)")}
+                onBlur={e => (e.target.style.borderColor = "var(--bdr)")}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-colors"
+                style={{
+                  background: "var(--surfB)",
+                  border: "1px solid var(--bdr)",
+                  color: "var(--txt)",
+                }}
+                onFocus={e => (e.target.style.borderColor = "var(--accent)")}
+                onBlur={e => (e.target.style.borderColor = "var(--bdr)")}
               />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>
+                {error}
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg py-3 text-sm font-bold transition-opacity disabled:opacity-50"
+              style={{ background: "var(--accent)", color: "#fff" }}
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>

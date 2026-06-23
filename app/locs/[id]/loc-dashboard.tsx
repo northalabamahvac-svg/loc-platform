@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { CalcResult, Transaction } from "@/lib/calc";
 import { calcLoc } from "@/lib/calc";
-import { Plus, Minus, Users, History, TrendingDown } from "lucide-react";
+import { TrendingDown, Users } from "lucide-react";
+
+const MONO = 'ui-monospace,"SF Mono",Menlo,monospace';
 
 function fmt(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -38,12 +40,22 @@ interface Props {
 
 type Tab = "overview" | "history" | "members";
 
+const inputStyle: React.CSSProperties = {
+  background: "var(--surfB)",
+  border: "1px solid var(--bdr)",
+  color: "var(--txt)",
+  borderRadius: 8,
+  padding: "8px 12px",
+  fontSize: 13,
+  width: "100%",
+  outline: "none",
+};
+
 export default function LocDashboard({ loc, transactions, result: initialResult, role, members, userId }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   const [txs, setTxs] = useState(transactions);
   const [result, setResult] = useState(initialResult);
   const supabase = createClient();
-  const router = useRouter();
 
   function refreshCalc(newTxs: Transaction[]) {
     setTxs(newTxs);
@@ -54,47 +66,57 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
   const available = Math.max(0, loc.ceiling_cents - result.principal);
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+    <main className="max-w-3xl mx-auto px-4 py-5 space-y-4">
       {/* Balance card */}
-      <div className="bg-blue-600 rounded-2xl p-5 text-white">
-        <p className="text-blue-200 text-xs font-medium mb-1">Total Owed</p>
-        <p className="text-4xl font-bold tracking-tight">{fmt(result.totalOwed)}</p>
-        <div className="flex gap-6 mt-3 text-sm">
-          <div>
-            <p className="text-blue-200 text-xs">Principal</p>
-            <p className="font-semibold">{fmt(result.principal)}</p>
-          </div>
-          <div>
-            <p className="text-blue-200 text-xs">Accrued Interest</p>
-            <p className="font-semibold">{fmt(result.accruedInterest)}</p>
-          </div>
-          <div>
-            <p className="text-blue-200 text-xs">Daily Interest</p>
-            <p className="font-semibold">{fmt(result.dailyInterest)}/day</p>
-          </div>
+      <div className="rounded-2xl p-5" style={{
+        background: "linear-gradient(145deg,#12122a 0%,#0c0c1e 100%)",
+        border: "1px solid var(--bdrA)",
+      }}>
+        <p className="text-xs font-bold tracking-[0.12em] uppercase mb-1" style={{ color: "var(--muted-hi)" }}>
+          Total Owed
+        </p>
+        <p className="text-4xl font-black tracking-tight" style={{ fontFamily: MONO, color: "var(--red-t)" }}>
+          {fmt(result.totalOwed)}
+        </p>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3">
+          {[
+            ["Principal", fmt(result.principal), "var(--txt)"],
+            ["Accrued Interest", fmt(result.accruedInterest), "var(--amber-t)"],
+            ["Daily Interest", fmt(result.dailyInterest) + "/day", "var(--muted-hi)"],
+          ].map(([label, value, color]) => (
+            <div key={label as string}>
+              <p className="text-xs mb-0.5" style={{ color: "var(--muted)" }}>{label}</p>
+              <p className="text-sm font-bold" style={{ fontFamily: MONO, color: color as string }}>{value}</p>
+            </div>
+          ))}
         </div>
         {/* Utilization bar */}
         <div className="mt-4">
-          <div className="flex justify-between text-xs text-blue-200 mb-1">
+          <div className="flex justify-between text-xs mb-1" style={{ color: "var(--muted)" }}>
             <span>{fmt(result.principal)} used</span>
             <span>{fmt(available)} available</span>
           </div>
-          <div className="h-2 bg-blue-500 rounded-full overflow-hidden">
-            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${usedPct}%` }} />
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bdr)" }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${usedPct}%`, background: "var(--accent)" }} />
           </div>
-          <p className="text-xs text-blue-200 mt-1">{fmt(loc.ceiling_cents)} ceiling · {(loc.apr * 100).toFixed(1)}% APR</p>
+          <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+            {fmt(loc.ceiling_cents)} ceiling · {(loc.apr * 100).toFixed(1)}% APR
+          </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+      <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--surfB)" }}>
         {(["overview", "history", "members"] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
+            className="flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-all"
+            style={{
+              background: tab === t ? "var(--surf)" : "transparent",
+              color: tab === t ? "var(--txt-hi)" : "var(--muted)",
+              border: tab === t ? "1px solid var(--bdr)" : "1px solid transparent",
+            }}
           >
             {t}
           </button>
@@ -102,16 +124,14 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
       </div>
 
       {tab === "overview" && (
-        <OverviewTab
-          loc={loc}
-          result={result}
-          txs={txs}
-          role={role}
-          onRefresh={refreshCalc}
-        />
+        <OverviewTab loc={loc} result={result} txs={txs} role={role} onRefresh={refreshCalc} />
       )}
-      {tab === "history" && <HistoryTab txs={txs} role={role} locId={loc.id} onRefresh={refreshCalc} apr={loc.apr} />}
-      {tab === "members" && <MembersTab members={members} locId={loc.id} role={role} currentUserId={userId} />}
+      {tab === "history" && (
+        <HistoryTab txs={txs} role={role} locId={loc.id} onRefresh={refreshCalc} apr={loc.apr} />
+      )}
+      {tab === "members" && (
+        <MembersTab members={members} locId={loc.id} role={role} currentUserId={userId} />
+      )}
     </main>
   );
 }
@@ -141,17 +161,17 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
       .insert({ loc_id: loc.id, type: mode, amount_cents: cents, date, note: note || null })
       .select() as any;
     if (err) { setError(err.message); setLoading(false); return; }
-    const newTxs = [...txs, data[0]];
-    onRefresh(newTxs);
+    onRefresh([...txs, data[0]]);
     setAmount(""); setNote(""); setMode(null); setLoading(false);
   }
 
   return (
     <div className="space-y-4">
       {/* Payoff projection */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4">
-        <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
-          <TrendingDown className="h-3.5 w-3.5" /> Payoff at {fmt(result.dailyInterest * 2)}/day (2× daily interest)
+      <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+        <p className="text-xs font-bold mb-2 flex items-center gap-1.5" style={{ color: "var(--muted-hi)" }}>
+          <TrendingDown className="h-3.5 w-3.5" />
+          Payoff at {fmt(result.dailyInterest * 2)}/day (2× daily interest)
         </p>
         {result.principal > 0 ? (() => {
           const dailyPayment = result.dailyInterest * 2;
@@ -162,41 +182,51 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
             ? new Date(Date.now() + daysToPayoff * 86400000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
             : null;
           return (
-            <p className="text-sm text-gray-700">
+            <p className="text-sm" style={{ color: "var(--txt)" }}>
               {payoffDate ? `Payoff by ${payoffDate} (${daysToPayoff} days)` : "Increase payment to cover interest"}
             </p>
           );
-        })() : <p className="text-sm text-gray-500">No outstanding balance.</p>}
+        })() : <p className="text-sm" style={{ color: "var(--muted)" }}>No outstanding balance.</p>}
       </div>
 
       {role === "owner" && (
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setMode(mode === "draw" ? null : "draw")}
-            className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors ${
-              mode === "draw" ? "bg-orange-600 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
-            }`}
+            className="rounded-xl py-3 text-sm font-bold transition-all"
+            style={{
+              background: mode === "draw" ? "var(--amber)" : "rgba(217,119,6,0.12)",
+              color: mode === "draw" ? "#fff" : "var(--amber-t)",
+              border: `1px solid ${mode === "draw" ? "var(--amber)" : "rgba(217,119,6,0.3)"}`,
+            }}
           >
-            <Plus className="h-4 w-4" /> Add Draw
+            + Add Draw
           </button>
           <button
             onClick={() => setMode(mode === "payment" ? null : "payment")}
-            className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors ${
-              mode === "payment" ? "bg-green-600 text-white" : "bg-green-50 text-green-700 border border-green-200"
-            }`}
+            className="rounded-xl py-3 text-sm font-bold transition-all"
+            style={{
+              background: mode === "payment" ? "var(--green)" : "rgba(5,150,105,0.12)",
+              color: mode === "payment" ? "#fff" : "var(--green-t)",
+              border: `1px solid ${mode === "payment" ? "var(--green)" : "rgba(5,150,105,0.3)"}`,
+            }}
           >
-            <Minus className="h-4 w-4" /> Add Payment
+            − Add Payment
           </button>
         </div>
       )}
 
       {mode && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 capitalize">{mode === "draw" ? "New Draw" : "Record Payment"}</h3>
+        <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "var(--txt-hi)" }}>
+            {mode === "draw" ? "New Draw" : "Record Payment"}
+          </h3>
           <form onSubmit={submit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Amount ($)</label>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
+                  Amount ($)
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -204,38 +234,45 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
                   onChange={e => setAmount(e.target.value)}
                   required
                   placeholder="0.00"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={inputStyle}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
+                  Date
+                </label>
                 <input
                   type="date"
                   value={date}
                   onChange={e => setDate(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={inputStyle}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Note (optional)</label>
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
+                Note (optional)
+              </label>
               <input
                 value={note}
                 onChange={e => setNote(e.target.value)}
                 placeholder="What is this for?"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={inputStyle}
               />
             </div>
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && (
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>
+                {error}
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
-              className={`w-full rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50 transition-colors ${
-                mode === "draw" ? "bg-orange-600 hover:bg-orange-700" : "bg-green-600 hover:bg-green-700"
-              }`}
+              className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity disabled:opacity-50"
+              style={{ background: mode === "draw" ? "var(--amber)" : "var(--green)", color: "#fff" }}
             >
-              {loading ? "Saving…" : mode === "draw" ? "Record draw" : "Record payment"}
+              {loading ? "Saving…" : mode === "draw" ? "Record Draw" : "Record Payment"}
             </button>
           </form>
         </div>
@@ -243,19 +280,30 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
 
       {/* Recent activity */}
       {recent.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <p className="text-xs font-semibold text-gray-500 px-4 pt-4 pb-2">Recent Activity</p>
-          <div className="divide-y divide-gray-100">
-            {recent.map(tx => (
-              <div key={tx.id} className="px-4 py-3 flex items-center justify-between">
+        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <p className="text-xs font-bold px-4 pt-4 pb-2 uppercase tracking-wide" style={{ color: "var(--muted)" }}>
+            Recent Activity
+          </p>
+          <div>
+            {recent.map((tx, i) => (
+              <div
+                key={tx.id}
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}
+              >
                 <div>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-semibold" style={{ color: "var(--txt)" }}>
                     {tx.type === "draw" ? "Draw" : "Payment"}
-                    {tx.note && <span className="text-gray-400 font-normal"> · {tx.note}</span>}
+                    {tx.note && <span className="font-normal" style={{ color: "var(--muted)" }}> · {tx.note}</span>}
                   </p>
-                  <p className="text-xs text-gray-400">{new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                  <p className="text-xs" style={{ color: "var(--muted)" }}>
+                    {new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
                 </div>
-                <span className={`text-sm font-semibold tabular-nums ${tx.type === "draw" ? "text-orange-600" : "text-green-600"}`}>
+                <span
+                  className="text-sm font-bold"
+                  style={{ fontFamily: MONO, color: tx.type === "draw" ? "var(--amber-t)" : "var(--green-t)" }}
+                >
                   {tx.type === "draw" ? "+" : "−"}{fmt(tx.amount_cents)}
                 </span>
               </div>
@@ -280,42 +328,53 @@ function HistoryTab({ txs, role, locId, onRefresh, apr }: {
   async function deleteTx(id: string) {
     setDeleting(id);
     await supabase.from("transactions").delete().eq("id", id);
-    const newTxs = txs.filter(t => t.id !== id);
-    onRefresh(newTxs);
+    onRefresh(txs.filter(t => t.id !== id));
     setDeleting(null);
   }
 
   if (sorted.length === 0) {
-    return <p className="text-center text-sm text-gray-400 py-12">No transactions yet.</p>;
+    return (
+      <p className="text-center text-sm py-12" style={{ color: "var(--muted)" }}>
+        No transactions yet.
+      </p>
+    );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div className="divide-y divide-gray-100">
-        {sorted.map(tx => (
-          <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 capitalize">
-                {tx.type}
-                {tx.note && <span className="text-gray-400 font-normal"> · {tx.note}</span>}
-              </p>
-              <p className="text-xs text-gray-400">{new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
-            </div>
-            <span className={`text-sm font-semibold tabular-nums flex-shrink-0 ${tx.type === "draw" ? "text-orange-600" : "text-green-600"}`}>
-              {tx.type === "draw" ? "+" : "−"}{fmt(tx.amount_cents)}
-            </span>
-            {role === "owner" && (
-              <button
-                onClick={() => deleteTx(tx.id)}
-                disabled={deleting === tx.id}
-                className="text-xs text-red-400 hover:text-red-600 flex-shrink-0 disabled:opacity-40"
-              >
-                {deleting === tx.id ? "…" : "Delete"}
-              </button>
-            )}
+    <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+      {sorted.map((tx, i) => (
+        <div
+          key={tx.id}
+          className="px-4 py-3 flex items-center gap-3"
+          style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold capitalize" style={{ color: "var(--txt)" }}>
+              {tx.type}
+              {tx.note && <span className="font-normal" style={{ color: "var(--muted)" }}> · {tx.note}</span>}
+            </p>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              {new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </p>
           </div>
-        ))}
-      </div>
+          <span
+            className="text-sm font-bold flex-shrink-0"
+            style={{ fontFamily: MONO, color: tx.type === "draw" ? "var(--amber-t)" : "var(--green-t)" }}
+          >
+            {tx.type === "draw" ? "+" : "−"}{fmt(tx.amount_cents)}
+          </span>
+          {role === "owner" && (
+            <button
+              onClick={() => deleteTx(tx.id)}
+              disabled={deleting === tx.id}
+              className="text-xs flex-shrink-0 transition-opacity hover:opacity-80 disabled:opacity-30"
+              style={{ color: "var(--red-t)" }}
+            >
+              {deleting === tx.id ? "…" : "Delete"}
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -346,19 +405,24 @@ function MembersTab({ members, locId, role, currentUserId }: {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-gray-200 p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+      <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+        <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--txt-hi)" }}>
           <Users className="h-4 w-4" /> Members
         </h3>
         <div className="space-y-2">
-          {members.map(m => (
-            <div key={m.id} className="flex items-center justify-between py-1">
-              <span className="text-sm text-gray-700">
+          {members.map((m, i) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-between py-2"
+              style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}
+            >
+              <span className="text-sm" style={{ color: "var(--txt)" }}>
                 {m.user_id === currentUserId ? "You" : m.user_id.slice(0, 8) + "…"}
               </span>
-              <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${
-                m.role === "owner" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
-              }`}>
+              <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{
+                background: m.role === "owner" ? "rgba(91,92,246,0.15)" : "rgba(71,85,105,0.15)",
+                color: m.role === "owner" ? "var(--accent-hi)" : "var(--muted-hi)",
+              }}>
                 {m.role}
               </span>
             </div>
@@ -367,8 +431,8 @@ function MembersTab({ members, locId, role, currentUserId }: {
       </div>
 
       {role === "owner" && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Invite someone</h3>
+        <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "var(--txt-hi)" }}>Invite someone</h3>
           <form onSubmit={invite} className="space-y-3">
             <input
               type="email"
@@ -376,7 +440,7 @@ function MembersTab({ members, locId, role, currentUserId }: {
               onChange={e => setEmail(e.target.value)}
               placeholder="their@email.com"
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={inputStyle}
             />
             <div className="flex gap-2">
               {(["viewer", "owner"] as const).map(r => (
@@ -384,26 +448,38 @@ function MembersTab({ members, locId, role, currentUserId }: {
                   key={r}
                   type="button"
                   onClick={() => setInviteRole(r)}
-                  className={`flex-1 rounded-lg py-2 text-sm font-medium capitalize transition-colors ${
-                    inviteRole === r ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"
-                  }`}
+                  className="flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-all"
+                  style={{
+                    background: inviteRole === r ? "var(--accent)" : "var(--surfB)",
+                    color: inviteRole === r ? "#fff" : "var(--muted-hi)",
+                    border: `1px solid ${inviteRole === r ? "var(--accent)" : "var(--bdr)"}`,
+                  }}
                 >
                   {r}
                 </button>
               ))}
             </div>
-            {error && <p className="text-xs text-red-600">{error}</p>}
-            {message && <p className="text-xs text-green-600">{message}</p>}
+            {error && (
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>
+                {error}
+              </p>
+            )}
+            {message && (
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>
+                {message}
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity disabled:opacity-50"
+              style={{ background: "var(--accent)", color: "#fff" }}
             >
-              {loading ? "Sending…" : "Send invite"}
+              {loading ? "Sending…" : "Send Invite"}
             </button>
           </form>
-          <p className="text-xs text-gray-400 mt-2">
-            They'll get an email to create their account and will automatically have access to this LOC.
+          <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
+            They&apos;ll get an email to create their account and will automatically have access to this LOC.
           </p>
         </div>
       )}

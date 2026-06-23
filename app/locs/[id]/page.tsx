@@ -11,7 +11,6 @@ export default async function LocPage({ params }: { params: Promise<{ id: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Get membership (also confirms access)
   const { data: membership } = await supabase
     .from("loc_members")
     .select("role")
@@ -35,7 +34,6 @@ export default async function LocPage({ params }: { params: Promise<{ id: string
     .eq("loc_id", id)
     .order("date", { ascending: false }) as any;
 
-  // Get all members (owners only)
   const { data: members } = await supabase
     .from("loc_members")
     .select("id, role, user_id")
@@ -47,18 +45,26 @@ export default async function LocPage({ params }: { params: Promise<{ id: string
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
-        <Link href="/dashboard" className="text-gray-400 hover:text-gray-700">
+    <div className="min-h-screen">
+      <header className="px-4 py-3 flex items-center gap-3" style={{
+        background: "rgba(15,15,30,0.85)",
+        borderBottom: "1px solid var(--bdr)",
+        backdropFilter: "blur(8px)",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+      }}>
+        <Link href="/dashboard" style={{ color: "var(--muted-hi)" }} className="hover:opacity-80 flex-shrink-0">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-gray-900 truncate">{loc.name}</h1>
-          <p className="text-xs text-gray-400">{loc.lender_name} → {loc.borrower_name}</p>
+          <h1 className="text-sm font-bold truncate" style={{ color: "var(--txt-hi)" }}>{loc.name}</h1>
+          <p className="text-xs" style={{ color: "var(--muted)" }}>{loc.lender_name} → {loc.borrower_name}</p>
         </div>
-        <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${
-          membership.role === "owner" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
-        }`}>
+        <span className="text-xs rounded-full px-2 py-0.5 font-semibold flex-shrink-0" style={{
+          background: membership.role === "owner" ? "rgba(91,92,246,0.15)" : "rgba(71,85,105,0.15)",
+          color: membership.role === "owner" ? "var(--accent-hi)" : "var(--muted-hi)",
+        }}>
           {membership.role}
         </span>
       </header>

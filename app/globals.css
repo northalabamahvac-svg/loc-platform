@@ -1,6 +1,52 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
+  --bg: #08080f;
+  --surf: #0f0f1e;
+  --surfB: #141428;
+  --bdr: #1c1c38;
+  --bdrA: #252545;
+  --accent: #5b5cf6;
+  --accent-hi: #7b7cfa;
+  --green: #059669;
+  --green-t: #34d399;
+  --red: #dc2626;
+  --red-t: #f87171;
+  --amber: #d97706;
+  --amber-t: #fbbf24;
+  --txt: #dde4f0;
+  --txt-hi: #f4f7ff;
+  --muted: #475569;
+  --muted-hi: #64748b;
+}
+
+html, body {
+  background-color: var(--bg);
+  color: var(--txt);
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100%;
+}
+
+body {
+  background-image:
+    linear-gradient(rgba(5,5,18,0.72), rgba(5,5,18,0.72)),
+    linear-gradient(160deg, #0a0a1f 0%, #050510 40%, #080818 100%);
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+/* monospace numbers globally */
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 3px; }
+
+/* date inputs on dark bg */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
 }
