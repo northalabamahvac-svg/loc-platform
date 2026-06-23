@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 
-const HEADER_H = 64; // px reserved for the app header above games
+const HEADER_H = 64;
+const getVH = () => (window.visualViewport?.height ?? window.innerHeight) - HEADER_H;
 
 function CloseBtn({ onClose }: { onClose: () => void }) {
   return (
@@ -29,7 +30,7 @@ function SnakeGame({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const c = ref.current!;
     const W = c.width = window.innerWidth;
-    const H = c.height = window.innerHeight - HEADER_H;
+    const H = c.height = getVH();
     const ctx = c.getContext("2d")!;
     const CELL = Math.floor(Math.min(W, H) / 22);
     const COLS = Math.floor(W / CELL), ROWS = Math.floor(H / CELL);
@@ -78,7 +79,7 @@ function SnakeGame({ onClose }: { onClose: () => void }) {
       if (!touchStart) return;
       const t = e.changedTouches[0];
       const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 6) applySwipe(dx, dy);
+      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 20) applySwipe(dx, dy);
       touchStart = null;
     };
     const onKey = (e: KeyboardEvent) => {
@@ -165,7 +166,7 @@ function SnakeGame({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <div style={{ position: "fixed", top: HEADER_H, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
+    <div style={{ position: "fixed", top: HEADER_H, left: 0, right: 0, bottom: 0, zIndex: 1000, touchAction: "none" }}>
       <canvas ref={ref} style={{ display: "block", width: "100%", height: "100%" }} />
       <CloseBtn onClose={onClose} />
     </div>
@@ -298,7 +299,7 @@ function FlappyGame({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <div style={{ position: "fixed", top: HEADER_H, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
+    <div style={{ position: "fixed", top: HEADER_H, left: 0, right: 0, bottom: 0, zIndex: 1000, touchAction: "none" }}>
       <canvas ref={ref} style={{ display: "block", width: "100%", height: "100%" }} />
       <CloseBtn onClose={onClose} />
     </div>
@@ -493,6 +494,7 @@ function BreakoutGame({ onClose }: { onClose: () => void }) {
     return () => {
       cancelAnimationFrame(G.animId);
       c.removeEventListener("mousemove", onMouseMove);
+      c.removeEventListener("touchmove", onTouchMove);
       c.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onKeyUp);
@@ -500,7 +502,7 @@ function BreakoutGame({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <div style={{ position: "fixed", top: HEADER_H, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
+    <div style={{ position: "fixed", top: HEADER_H, left: 0, right: 0, bottom: 0, zIndex: 1000, touchAction: "none" }}>
       <canvas ref={ref} style={{ display: "block", width: "100%", height: "100%" }} />
       <CloseBtn onClose={onClose} />
     </div>
