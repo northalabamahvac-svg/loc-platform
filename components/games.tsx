@@ -209,7 +209,7 @@ function FlappyGame({ onClose }: { onClose: () => void }) {
     const draw = () => {
       ctx.fillStyle = "#08080f"; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = "rgba(255,255,255,0.2)";
-      for (let i = 0; i < 40; i++) { const sx = (i * 137 + G.frame * 0.2) % W, sy = (i * 79) % H; ctx.fillRect(sx, sy, 1.5, 1.5); }
+      for (let i = 0; i < 40; i++) { const sx = (i * 137 + G.dist * 0.2) % W, sy = (i * 79) % H; ctx.fillRect(sx, sy, 1.5, 1.5); }
 
       G.pipes.forEach(p => {
         const g1 = ctx.createLinearGradient(p.x, 0, p.x + PIPE_W, 0); g1.addColorStop(0, "#7f1d1d"); g1.addColorStop(1, "#dc2626"); ctx.fillStyle = g1;
