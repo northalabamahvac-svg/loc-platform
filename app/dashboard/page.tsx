@@ -51,6 +51,13 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-3">
           <span className="text-xs hidden sm:block" style={{ color: "var(--muted)" }}>{user.email}</span>
           <ThemePicker />
+          <Link
+            href="/profile"
+            className="text-xs font-semibold rounded-lg px-3 py-1.5 transition-opacity hover:opacity-70"
+            style={{ color: "var(--muted-hi)", border: "1px solid var(--bdr)", background: "var(--surfB)" }}
+          >
+            Profile
+          </Link>
           <SignOutButton />
         </div>
       </header>

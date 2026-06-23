@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { CalcResult, Transaction } from "@/lib/calc";
 import { calcLoc } from "@/lib/calc";
@@ -360,6 +360,7 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
   members: Member[]; locId: string; role: string; currentUserId: string;
 }) {
   const [members, setMembers] = useState(initialMembers);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"owner" | "viewer">("viewer");
   const [loading, setLoading] = useState(false);
@@ -367,6 +368,16 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const supabase = createClient();
+
+  // Fetch display names once on mount
+  useEffect(() => {
+    const ids = initialMembers.map(m => m.user_id).join(",");
+    if (!ids) return;
+    fetch(`/api/profiles?ids=${ids}`)
+      .then(r => r.json())
+      .then(data => setNames(data))
+      .catch(() => {});
+  }, []);
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -400,7 +411,9 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
           {members.map((m, i) => (
             <div key={m.id} className="flex items-center justify-between py-2" style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>
               <span className="text-sm" style={{ color: "var(--txt)" }}>
-                {m.user_id === currentUserId ? "You" : m.user_id.slice(0, 8) + "…"}
+                {m.user_id === currentUserId
+                  ? `You (${names[m.user_id] || "…"})`
+                  : names[m.user_id] || m.user_id.slice(0, 8) + "…"}
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{
