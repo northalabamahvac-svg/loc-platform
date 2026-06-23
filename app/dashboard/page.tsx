@@ -63,6 +63,19 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* CamFolder shortcut */}
+        <Link href="/camfolder" className="flex items-center gap-4 rounded-2xl p-4 mb-6 transition-all hover:opacity-90"
+          style={{ background: "var(--surf)", border: "1px solid var(--bdr)", textDecoration: "none" }}>
+          <div className="flex items-center justify-center rounded-xl text-2xl" style={{ width: 48, height: 48, background: "rgba(91,92,246,0.15)", flexShrink: 0 }}>
+            📷
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold" style={{ color: "var(--txt-hi)" }}>CamFolder</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>Job site photos, AI daily logs &amp; field reports</p>
+          </div>
+          <span className="text-sm font-bold flex-shrink-0" style={{ color: "var(--accent-hi)" }}>Open →</span>
+        </Link>
+
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold" style={{ color: "var(--txt-hi)" }}>Lines of Credit</h2>
           <Link
