@@ -356,14 +356,17 @@ function HistoryTab({ txs, role, locId, onRefresh, apr }: {
 }
 
 // ─── Members Tab ───────────────────────────────────────────────────────────────
-function MembersTab({ members, locId, role, currentUserId }: {
+function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
   members: Member[]; locId: string; role: string; currentUserId: string;
 }) {
+  const [members, setMembers] = useState(initialMembers);
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"owner" | "viewer">("viewer");
   const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const supabase = createClient();
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -379,6 +382,14 @@ function MembersTab({ members, locId, role, currentUserId }: {
     setLoading(false);
   }
 
+  async function removeMember(memberId: string) {
+    if (!window.confirm("Remove this member from the LOC?")) return;
+    setRemoving(memberId);
+    await supabase.from("loc_members").delete().eq("id", memberId);
+    setMembers(ms => ms.filter(m => m.id !== memberId));
+    setRemoving(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
@@ -391,12 +402,24 @@ function MembersTab({ members, locId, role, currentUserId }: {
               <span className="text-sm" style={{ color: "var(--txt)" }}>
                 {m.user_id === currentUserId ? "You" : m.user_id.slice(0, 8) + "…"}
               </span>
-              <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{
-                background: m.role === "owner" ? "rgba(91,92,246,0.15)" : "rgba(71,85,105,0.15)",
-                color: m.role === "owner" ? "var(--accent-hi)" : "var(--muted-hi)",
-              }}>
-                {m.role}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs rounded-full px-2 py-0.5 font-semibold" style={{
+                  background: m.role === "owner" ? "rgba(91,92,246,0.15)" : "rgba(71,85,105,0.15)",
+                  color: m.role === "owner" ? "var(--accent-hi)" : "var(--muted-hi)",
+                }}>
+                  {m.role}
+                </span>
+                {role === "owner" && m.user_id !== currentUserId && (
+                  <button
+                    onClick={() => removeMember(m.id)}
+                    disabled={removing === m.id}
+                    className="text-xs transition-opacity hover:opacity-70 disabled:opacity-30"
+                    style={{ color: "var(--red-t)" }}
+                  >
+                    {removing === m.id ? "…" : "Remove"}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
