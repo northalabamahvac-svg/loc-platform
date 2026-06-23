@@ -27,7 +27,7 @@ export default async function ProfilePage() {
       <main style={{ maxWidth: 520, margin: "0 auto", padding: "32px 16px 80px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1a2a38", margin: "0 0 4px" }}>My Profile</h1>
         <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 28px" }}>Update your display name and account settings</p>
-        <ProfileForm currentName={user.user_metadata?.display_name ?? ""} email={user.email ?? ""} />
+        <ProfileForm currentName={user.user_metadata?.display_name ?? ""} email={user.email ?? ""} googleReviewUrl={user.user_metadata?.google_review_url ?? ""} />
       </main>
     </div>
   );

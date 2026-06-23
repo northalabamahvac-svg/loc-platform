@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -25,7 +25,7 @@ const labelStyle: React.CSSProperties = {
   color: "#64748b",
 };
 
-export default function ProfileForm({ currentName, email }: { currentName: string; email: string }) {
+export default function ProfileForm({ currentName, email, googleReviewUrl: initialGoogleUrl }: { currentName: string; email: string; googleReviewUrl: string }) {
   const [name, setName] = useState(currentName);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,6 +34,9 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
   const [nameMsg, setNameMsg] = useState("");
   const [pwMsg, setPwMsg] = useState("");
   const [pwErr, setPwErr] = useState("");
+  const [googleUrl, setGoogleUrl] = useState(initialGoogleUrl);
+  const [urlMsg, setUrlMsg] = useState("");
+  const [urlSaving, setUrlSaving] = useState(false);
   const supabase = createClient();
 
   async function saveName(e: React.FormEvent) {
@@ -53,6 +56,14 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
     const { error } = await supabase.auth.updateUser({ password });
     if (error) { setPwErr(error.message); } else { setPwMsg("Password updated!"); setPassword(""); setConfirmPassword(""); }
     setChangingPw(false);
+  }
+
+  async function saveGoogleUrl(e: React.FormEvent) {
+    e.preventDefault();
+    setUrlSaving(true); setUrlMsg("");
+    const { error } = await supabase.auth.updateUser({ data: { google_review_url: googleUrl.trim() } });
+    setUrlMsg(error ? `Error: ${error.message}` : "Saved!");
+    setUrlSaving(false);
   }
 
   const card: React.CSSProperties = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, marginBottom: 16 };
@@ -101,6 +112,37 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
           <button type="submit" disabled={changingPw || !password}
             style={{ background: "#f3f7fa", color: "#1a2a38", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: changingPw || !password ? 0.5 : 1 }}>
             {changingPw ? "Updating…" : "Update Password"}
+          </button>
+        </form>
+      </div>
+
+      {/* Google Review URL */}
+      <div style={card}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a2a38", margin: "0 0 4px" }}>⭐ Google Review Link</h2>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 16px" }}>
+          Paste your Google Business review link here. It will appear in review request emails sent to customers from any project.
+        </p>
+        <form onSubmit={saveGoogleUrl} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Google Review URL</label>
+            <input
+              value={googleUrl}
+              onChange={e => setGoogleUrl(e.target.value)}
+              placeholder="https://g.page/r/YOUR_PLACE_ID/review"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+              Find it in Google Business Profile → Get more reviews → Share review form.
+            </p>
+          </div>
+          {urlMsg && (
+            <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: urlMsg.startsWith("Error") ? "#fef2f2" : "#fdf2f3", color: urlMsg.startsWith("Error") ? "#dc2626" : "#d4838d" }}>
+              {urlMsg}
+            </p>
+          )}
+          <button type="submit" disabled={urlSaving}
+            style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: urlSaving ? 0.5 : 1 }}>
+            {urlSaving ? "Saving…" : "Save Review Link"}
           </button>
         </form>
       </div>

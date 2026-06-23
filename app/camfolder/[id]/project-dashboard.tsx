@@ -32,6 +32,17 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [logs, setLogs] = useState<DailyLog[]>(initialLogs);
   const supabase = createClient();
+  const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewName, setReviewName] = useState("");
+  const [reviewEmail, setReviewEmail] = useState("");
+  const [reviewCopied, setReviewCopied] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setGoogleReviewUrl(user?.user_metadata?.google_review_url ?? "");
+    });
+  }, [supabase]);
 
   const ROW1: { key: Tab; label: string; fullLabel: string }[] = [
     { key: "feed",         label: "📰", fullLabel: "Feed" },
@@ -63,6 +74,12 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
             {project.address && <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0" }}>📍 {project.address}</p>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {role === "owner" && (
+              <button onClick={() => setShowReviewModal(true)}
+                style={{ display: "flex", alignItems: "center", gap: 5, background: "#fdf2f3", border: "1px solid #f5c2c7", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#d4838d", cursor: "pointer", whiteSpace: "nowrap" }}>
+                ⭐ Request Review
+              </button>
+            )}
             <ThemePicker />
             <SignOutButton />
           </div>
@@ -125,6 +142,66 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
         {tab === "share"        && role === "owner" && <ShareTab project={project} />}
         {tab === "team"         && role === "owner" && <TeamTab project={project} userId={userId} />}
       </main>
+
+      {/* ── Google Review Request Modal ─────────────────── */}
+      {showReviewModal && (() => {
+        const msg = `Hi ${reviewName || "there"},\n\nThank you for choosing us for your${project.trade ? ` ${project.trade.toLowerCase()}` : ""} project${project.address ? ` at ${project.address}` : ""}!\n\nWe'd love to hear about your experience. If you have a moment, please consider leaving us a quick Google review — it means the world to our small team.\n\n⭐ Leave a review here:\n${googleReviewUrl || "[Add your Google Review link in Profile settings]"}\n\nThank you so much for your support!\n— The Blossomwood Building Co. Team`;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+            onClick={() => setShowReviewModal(false)}>
+            <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "8px 20px 40px", width: "100%", maxWidth: 560, maxHeight: "88vh", overflowY: "auto" }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e5e7eb", margin: "10px auto 20px" }} />
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#1a2a38", margin: "0 0 4px" }}>⭐ Request Google Review</h2>
+              <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
+                {googleReviewUrl
+                  ? "Fill in the customer details — we'll draft the email for you."
+                  : "First add your Google Review link in Profile settings, then come back here."}
+              </p>
+
+              {!googleReviewUrl ? (
+                <a href="/profile" style={{ display: "block", textAlign: "center", background: "#4a7a9b", color: "#fff", borderRadius: 10, padding: "13px 0", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
+                  → Go to Profile Settings
+                </a>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 }}>Customer Name</label>
+                      <input value={reviewName} onChange={e => setReviewName(e.target.value)} placeholder="e.g. John Smith"
+                        style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", color: "#1a2a38" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 }}>Customer Email</label>
+                      <input value={reviewEmail} onChange={e => setReviewEmail(e.target.value)} type="email" placeholder="e.g. john@example.com"
+                        style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", color: "#1a2a38" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 }}>Message Preview</label>
+                      <div style={{ background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#1a2a38", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                        {msg}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
+                    <a
+                      href={`mailto:${reviewEmail}?subject=Thank you — we'd love your feedback!&body=${encodeURIComponent(msg)}`}
+                      style={{ display: "block", textAlign: "center", background: "#4a7a9b", color: "#fff", borderRadius: 10, padding: "13px 0", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
+                      📧 Open in Email App
+                    </a>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(msg); setReviewCopied(true); setTimeout(() => setReviewCopied(false), 2000); }}
+                      style={{ background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 10, padding: "13px 0", fontWeight: 700, fontSize: 15, cursor: "pointer", color: "#1a2a38" }}>
+                      {reviewCopied ? "✓ Copied!" : "📋 Copy Message"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

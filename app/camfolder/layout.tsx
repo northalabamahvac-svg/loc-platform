@@ -5,7 +5,7 @@ export default async function CamFolderLayout({ children }: { children: React.Re
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const userName = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "User";
+  const userName = user?.user_metadata?.display_name ?? user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "User";
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f3f7fa" }}>
