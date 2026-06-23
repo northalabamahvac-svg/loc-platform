@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+﻿import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import ProjectListClient from "./project-list-client";
@@ -43,5 +43,6 @@ export default async function CamFolderPage() {
     photoCount: countByProject[p.id] ?? 0,
   }));
 
-  return <ProjectListClient projects={enriched} />;
+  const userName = user.user_metadata?.display_name ?? user.email?.split("@")[0] ?? "there";
+  return <ProjectListClient projects={enriched} userName={userName} />;
 }

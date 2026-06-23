@@ -19,7 +19,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   return (
     <div style={{ minHeight: "100vh", background: "#08080f", color: "#e2e8f0", fontFamily: "system-ui,sans-serif" }}>
       <header style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(15,15,30,0.9)" }}>
-        <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>📷 CamFolder — Project Update</p>
+        <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>📷 CamBBC — Project Update</p>
         <h1 style={{ fontSize: 18, fontWeight: 800, color: "#f1f5f9", margin: 0 }}>{project.name}</h1>
         {project.address && <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>📍 {project.address}</p>}
       </header>
@@ -73,7 +73,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       </main>
 
       <footer style={{ textAlign: "center", padding: "16px", fontSize: 11, color: "#334155", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        Shared via CamFolder · Read-only view
+        Shared via CamBBC · Read-only view
       </footer>
     </div>
   );

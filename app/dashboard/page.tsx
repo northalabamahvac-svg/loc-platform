@@ -70,7 +70,7 @@ export default async function DashboardPage() {
             📷
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold" style={{ color: "var(--txt-hi)" }}>CamFolder</p>
+            <p className="text-sm font-bold" style={{ color: "var(--txt-hi)" }}>CamBBC</p>
             <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>Job site photos, AI daily logs &amp; field reports</p>
           </div>
           <span className="text-sm font-bold flex-shrink-0" style={{ color: "var(--accent-hi)" }}>Open →</span>

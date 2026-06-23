@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const inputStyle: React.CSSProperties = {
-  background: "#f8fafc",
+  background: "#f3f7fa",
   border: "1px solid #e2e8f0",
-  color: "#0f172a",
+  color: "#1a2a38",
   borderRadius: 8,
   padding: "9px 12px",
   fontSize: 13,
@@ -61,7 +61,7 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
     <div>
       {/* Display name */}
       <div style={card}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "0 0 16px" }}>Display Name</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a2a38", margin: "0 0 16px" }}>Display Name</h2>
         <form onSubmit={saveName} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle}>Email</label>
@@ -73,12 +73,12 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
             <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>This is how you appear to teammates in Blossomwood Portal.</p>
           </div>
           {nameMsg && (
-            <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: nameMsg.startsWith("Error") ? "#fef2f2" : "#f0fdf4", color: nameMsg.startsWith("Error") ? "#dc2626" : "#16a34a" }}>
+            <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: nameMsg.startsWith("Error") ? "#fef2f2" : "#fdf2f3", color: nameMsg.startsWith("Error") ? "#dc2626" : "#d4838d" }}>
               {nameMsg}
             </p>
           )}
           <button type="submit" disabled={saving || !name.trim()}
-            style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: saving || !name.trim() ? 0.5 : 1 }}>
+            style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: saving || !name.trim() ? 0.5 : 1 }}>
             {saving ? "Saving…" : "Save Name"}
           </button>
         </form>
@@ -86,7 +86,7 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
 
       {/* Change password */}
       <div style={card}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "0 0 16px" }}>Change Password</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a2a38", margin: "0 0 16px" }}>Change Password</h2>
         <form onSubmit={savePassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle}>New Password</label>
@@ -97,9 +97,9 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
             <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeat password" required style={inputStyle} />
           </div>
           {pwErr && <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: "#fef2f2", color: "#dc2626" }}>{pwErr}</p>}
-          {pwMsg && <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: "#f0fdf4", color: "#16a34a" }}>{pwMsg}</p>}
+          {pwMsg && <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: "#fdf2f3", color: "#d4838d" }}>{pwMsg}</p>}
           <button type="submit" disabled={changingPw || !password}
-            style={{ background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: changingPw || !password ? 0.5 : 1 }}>
+            style={{ background: "#f3f7fa", color: "#1a2a38", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: changingPw || !password ? 0.5 : 1 }}>
             {changingPw ? "Updating…" : "Update Password"}
           </button>
         </form>
