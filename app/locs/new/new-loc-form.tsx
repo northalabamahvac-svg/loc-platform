@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createLoc } from "./actions";
 
 export default function NewLocForm({ userId }: { userId: string }) {
   const [name, setName] = useState("");
@@ -15,17 +15,13 @@ export default function NewLocForm({ userId }: { userId: string }) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
-  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    const { data: loc, error: locErr } = await supabase
-      .from("locs")
-      .insert({
+    try {
+      await createLoc({
         name,
         borrower_name: borrowerName,
         lender_name: lenderName,
@@ -33,16 +29,11 @@ export default function NewLocForm({ userId }: { userId: string }) {
         apr: parseFloat(apr) / 100,
         start_date: startDate,
         notes: notes || null,
-      })
-      .select()
-      .single() as any;
-
-    if (locErr) { setError(locErr.message); setLoading(false); return; }
-
-    // Make creator an owner
-    await supabase.from("loc_members").insert({ loc_id: loc.id, user_id: userId, role: "owner" });
-
-    router.push(`/locs/${loc.id}`);
+      });
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
+    }
   }
 
   return (
