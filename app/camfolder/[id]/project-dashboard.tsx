@@ -13,7 +13,8 @@ interface Checklist { id: string; name: string; created_at: string; }
 interface ChecklistItem { id: string; checklist_id: string; label: string; requires_photo: boolean; position: number; completed_at: string | null; completed_by: string | null; photo_url: string | null; }
 interface SigRequest { id: string; title: string; message: string | null; token: string; status: string; signer_name: string | null; signed_at: string | null; signature_url: string | null; created_at: string; }
 
-type Tab = "feed" | "photos" | "before-after" | "checklist" | "daily-log" | "past-logs" | "signatures" | "share" | "team";
+interface Comment { id: string; user_id: string; content: string; created_at: string; }
+type Tab = "feed" | "photos" | "before-after" | "checklist" | "daily-log" | "walkthrough" | "recap" | "past-logs" | "signatures" | "share" | "team";
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--txt)",
@@ -32,59 +33,79 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
   const [logs, setLogs] = useState<DailyLog[]>(initialLogs);
   const supabase = createClient();
 
+  const ROW1: { key: Tab; label: string; fullLabel: string }[] = [
+    { key: "feed",         label: "📰", fullLabel: "Feed" },
+    { key: "photos",       label: "📷", fullLabel: "Photos" },
+    { key: "before-after", label: "↔️",  fullLabel: "Before/After" },
+    { key: "checklist",    label: "✅", fullLabel: "Checklist" },
+    { key: "past-logs",    label: "📋", fullLabel: "Past Logs" },
+    { key: "recap",        label: "📊", fullLabel: "Recap" },
+  ];
+  const ROW2: { key: Tab; label: string; fullLabel: string; hide: boolean }[] = [
+    { key: "daily-log",   label: "🤖", fullLabel: "AI Log",      hide: role === "viewer" },
+    { key: "walkthrough", label: "🎙️", fullLabel: "Walkthrough", hide: role === "viewer" },
+    { key: "signatures",  label: "✍️",  fullLabel: "Signatures",  hide: role === "viewer" },
+    { key: "share",       label: "🔗", fullLabel: "Share",       hide: role !== "owner" },
+    { key: "team",        label: "👥", fullLabel: "Team",        hide: role !== "owner" },
+  ];
+  const row2Visible = ROW2.filter(t => !t.hide);
+
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="px-4 py-3 flex items-center justify-between" style={{
-        background: "rgba(15,15,30,0.85)", borderBottom: "1px solid var(--bdr)",
-        backdropFilter: "blur(8px)", position: "sticky", top: 0, zIndex: 50,
-      }}>
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href="/camfolder" className="text-xs font-semibold hover:opacity-70 flex-shrink-0" style={{ color: "var(--muted-hi)" }}>← Projects</Link>
-          <div style={{ width: 1, height: 16, background: "var(--bdr)", flexShrink: 0 }} />
-          <div className="min-w-0">
-            <p className="text-xs truncate" style={{ color: "var(--muted)" }}>📷 CamFolder {project.trade ? `· ${project.trade}` : ""}</p>
-            <h1 className="text-sm font-bold truncate" style={{ color: "var(--txt-hi)" }}>{project.name}</h1>
+    <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
+      {/* Project header */}
+      <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "14px 24px", position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 1px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              {project.trade ? `📷 ${project.trade}` : "📷 CamFolder"}
+            </p>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.name}</h1>
+            {project.address && <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0" }}>📍 {project.address}</p>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <ThemePicker />
+            <SignOutButton />
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <ThemePicker />
-          <SignOutButton />
+
+        {/* Tab rows */}
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", gap: 2, overflowX: "auto", scrollbarWidth: "none" }}>
+            {ROW1.map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                style={{
+                  flexShrink: 0, padding: "6px 12px", borderRadius: 6, fontSize: 13, fontWeight: tab === t.key ? 700 : 500,
+                  background: tab === t.key ? "#eff6ff" : "transparent",
+                  color: tab === t.key ? "#2563eb" : "#64748b",
+                  border: tab === t.key ? "1px solid #bfdbfe" : "1px solid transparent",
+                  cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s",
+                }}>
+                <span className="sm:hidden">{t.label}</span>
+                <span className="hidden sm:inline">{t.label} {t.fullLabel}</span>
+              </button>
+            ))}
+          </div>
+          {row2Visible.length > 0 && (
+            <div style={{ display: "flex", gap: 2, overflowX: "auto", scrollbarWidth: "none" }}>
+              {row2Visible.map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)}
+                  style={{
+                    flexShrink: 0, padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
+                    background: tab === t.key ? "#f0fdf4" : "transparent",
+                    color: tab === t.key ? "#16a34a" : "#94a3b8",
+                    border: tab === t.key ? "1px solid #bbf7d0" : "1px solid transparent",
+                    cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s",
+                  }}>
+                  <span className="sm:hidden">{t.label}</span>
+                  <span className="hidden sm:inline">{t.label} {t.fullLabel}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-3 py-4 space-y-3" style={{ paddingBottom: 80 }}>
-        {project.address && (
-          <p className="text-xs px-1" style={{ color: "var(--muted)" }}>📍 {project.address}</p>
-        )}
-
-        {/* Tabs — scrollable on mobile */}
-        <div className="flex gap-1 rounded-xl p-1 overflow-x-auto" style={{ background: "var(--surfB)", scrollbarWidth: "none" }}>
-          {([
-            { key: "feed",         label: "📰", fullLabel: "Feed" },
-            { key: "photos",       label: "📷", fullLabel: "Photos" },
-            { key: "before-after", label: "↔️",  fullLabel: "Before/After" },
-            { key: "checklist",    label: "✅", fullLabel: "Checklist" },
-            { key: "daily-log",    label: "🤖", fullLabel: "AI Log", hide: role === "viewer" },
-            { key: "past-logs",    label: "📋", fullLabel: "Past Logs" },
-            { key: "signatures",   label: "✍️",  fullLabel: "Signatures", hide: role === "viewer" },
-            { key: "share",        label: "🔗", fullLabel: "Share", hide: role !== "owner" },
-            { key: "team",         label: "👥", fullLabel: "Team", hide: role !== "owner" },
-          ] as { key: Tab; label: string; fullLabel: string; hide?: boolean }[]).filter(t => !t.hide).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="flex-shrink-0 flex-1 rounded-lg py-2.5 text-xs font-semibold transition-all whitespace-nowrap"
-              style={{
-                minWidth: 64,
-                background: tab === t.key ? "var(--surf)" : "transparent",
-                color: tab === t.key ? "var(--txt-hi)" : "var(--muted)",
-                border: tab === t.key ? "1px solid var(--bdr)" : "1px solid transparent",
-              }}>
-              <span className="sm:hidden">{t.label}</span>
-              <span className="hidden sm:inline">{t.label} {t.fullLabel}</span>
-            </button>
-          ))}
-        </div>
-
+      <main style={{ maxWidth: 860, margin: "0 auto", padding: "20px 16px 80px" }}>
         {tab === "feed"         && <FeedTab photos={photos} logs={logs} />}
         {tab === "photos"       && (
           <PhotosTab project={project} photos={photos} userId={userId} role={role}
@@ -97,6 +118,8 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
           <DailyLogTab project={project} photos={photos} userId={userId}
             onSave={log => setLogs(prev => [log, ...prev.filter(l => l.log_date !== log.log_date)])} />
         )}
+        {tab === "walkthrough"  && role !== "viewer" && <WalkthroughTab project={project} userId={userId} onSave={log => setLogs(prev => [log, ...prev.filter(l => l.log_date !== log.log_date)])} />}
+        {tab === "recap"        && <RecapTab project={project} />}
         {tab === "past-logs"    && <PastLogsTab logs={logs} onDelete={id => setLogs(prev => prev.filter(l => l.id !== id))} />}
         {tab === "signatures"   && role !== "viewer" && <SignaturesTab project={project} userId={userId} role={role} />}
         {tab === "share"        && role === "owner" && <ShareTab project={project} />}
@@ -295,15 +318,15 @@ function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
               </div>
               {/* Expanded overlay */}
               {expanded === photo.id && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.9)" }}
+                <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: "rgba(0,0,0,0.92)" }}
                   onClick={() => setExpanded(null)}>
-                  <div className="max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-                    <img src={photo.storage_url} alt="" className="w-full rounded-xl mb-3 max-h-[70vh] object-contain" />
+                  <div className="max-w-2xl mx-auto p-4" onClick={e => e.stopPropagation()}>
+                    <img src={photo.storage_url} alt="" className="w-full rounded-xl mb-3 max-h-[60vh] object-contain" />
                     {photo.note && <p className="text-sm text-center" style={{ color: "var(--txt)" }}>{photo.note}</p>}
                     <p className="text-xs text-center mt-1" style={{ color: "var(--muted)" }}>
                       {formatDate(photo.taken_at)}{photo.gps_lat ? ` · 📍 ${photo.gps_lat.toFixed(5)}, ${photo.gps_lng?.toFixed(5)}` : ""}
                     </p>
-                    <div className="flex gap-2 justify-center mt-4">
+                    <div className="flex gap-2 justify-center mt-3">
                       {canUpload && <button onClick={() => { setExpanded(null); setAnnotating(photo); }}
                         className="text-sm font-bold rounded-lg px-4 py-2" style={{ background: "var(--accent)", color: "#fff" }}>
                         ✏️ Annotate
@@ -312,6 +335,7 @@ function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
                         Close
                       </button>
                     </div>
+                    <PhotoComments photoId={photo.id} projectId={project.id} userId={userId} />
                   </div>
                 </div>
               )}
@@ -453,6 +477,292 @@ function DailyLogTab({ project, photos, userId, onSave }: {
             rows={18} style={{ ...inputStyle, fontSize: 13, lineHeight: 1.6, resize: "vertical" }}
           />
           {saved && <p className="text-xs mt-2" style={{ color: "var(--green-t)" }}>✓ Log saved to Past Logs</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Photo Comments ────────────────────────────────────────────────────────────
+function PhotoComments({ photoId, projectId, userId }: { photoId: string; projectId: string; userId: string }) {
+  const supabase = createClient();
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [text, setText] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  useEffect(() => {
+    supabase.from("cf_photo_comments").select("*").eq("photo_id", photoId).order("created_at")
+      .then(({ data }) => setComments(data ?? []));
+  }, [photoId]);
+
+  async function post(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setPosting(true);
+    const { data } = await supabase.from("cf_photo_comments").insert({ photo_id: photoId, project_id: projectId, user_id: userId, content: text.trim() }).select().single() as any;
+    if (data) setComments(prev => [...prev, data]);
+    setText(""); setPosting(false);
+  }
+
+  async function del(id: string) {
+    await supabase.from("cf_photo_comments").delete().eq("id", id);
+    setComments(prev => prev.filter(c => c.id !== id));
+  }
+
+  return (
+    <div className="mt-4 rounded-xl p-3" style={{ background: "rgba(255,255,255,0.05)" }}>
+      <p className="text-xs font-bold mb-2" style={{ color: "var(--muted-hi)" }}>💬 Comments</p>
+      {comments.map(c => (
+        <div key={c.id} className="flex gap-2 mb-2">
+          <div className="flex-1 rounded-lg px-2.5 py-1.5" style={{ background: "rgba(255,255,255,0.08)" }}>
+            <p className="text-xs" style={{ color: "var(--txt)" }}>{c.content}</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>{c.user_id === userId ? "You" : "Team"} · {formatDate(c.created_at)}</p>
+          </div>
+          {c.user_id === userId && (
+            <button onClick={() => del(c.id)} className="text-xs self-start mt-1 hover:opacity-60" style={{ color: "var(--red-t)" }}>×</button>
+          )}
+        </div>
+      ))}
+      <form onSubmit={post} className="flex gap-2 mt-2">
+        <input value={text} onChange={e => setText(e.target.value)} placeholder="Add a comment…"
+          style={{ flex: 1, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#f1f5f9", outline: "none" }} />
+        <button type="submit" disabled={posting} className="rounded-lg px-3 text-xs font-bold disabled:opacity-50"
+          style={{ background: "var(--accent)", color: "#fff" }}>Post</button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Apply Template Button ─────────────────────────────────────────────────────
+function ApplyTemplateButton({ project, userId, onApplied }: { project: Project; userId: string; onApplied: () => void }) {
+  const supabase = createClient();
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([]);
+  const [open, setOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+
+  useEffect(() => {
+    supabase.from("cf_templates").select("id, name").order("created_at", { ascending: false })
+      .then(({ data }) => setTemplates(data ?? []));
+  }, []);
+
+  async function apply(templateId: string, templateName: string) {
+    setApplying(true);
+    const { data: items } = await supabase.from("cf_template_items").select("*").eq("template_id", templateId).order("position") as any;
+    const { data: cl } = await supabase.from("cf_checklists").insert({ project_id: project.id, name: templateName, created_by: userId }).select().single() as any;
+    if (cl && items?.length) {
+      await supabase.from("cf_checklist_items").insert(items.map((i: any) => ({ checklist_id: cl.id, label: i.label, requires_photo: i.requires_photo, position: i.position })));
+    }
+    setOpen(false); setApplying(false); onApplied();
+  }
+
+  if (templates.length === 0) return null;
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)} className="text-xs font-semibold rounded-lg px-3 py-1.5"
+        style={{ background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--muted-hi)" }}>
+        📋 Apply Template
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl p-2 min-w-48 shadow-xl space-y-1"
+            style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+            {templates.map(t => (
+              <button key={t.id} disabled={applying} onClick={() => apply(t.id, t.name)}
+                className="w-full text-left rounded-lg px-3 py-2 text-sm hover:opacity-80 disabled:opacity-40"
+                style={{ background: "var(--surfB)", color: "var(--txt)" }}>
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Walkthrough Tab ───────────────────────────────────────────────────────────
+function WalkthroughTab({ project, userId, onSave }: { project: Project; userId: string; onSave: (log: DailyLog) => void }) {
+  const supabase = createClient();
+  const [recording, setRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [report, setReport] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const recognitionRef = useRef<any>(null);
+
+  const supported = typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+
+  function startRecording() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    const r = new SR();
+    r.continuous = true; r.interimResults = true; r.lang = "en-US";
+    let final = transcript;
+    r.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript + " ";
+        else interim += e.results[i][0].transcript;
+      }
+      setTranscript(final + interim);
+    };
+    r.onerror = () => setError("Microphone error — check browser permissions.");
+    r.onend = () => setRecording(false);
+    recognitionRef.current = r;
+    r.start(); setRecording(true); setError("");
+  }
+
+  function stopRecording() {
+    recognitionRef.current?.stop();
+    setRecording(false);
+  }
+
+  async function generateReport() {
+    if (!transcript.trim()) return;
+    setGenerating(true); setReport(""); setError("");
+    const res = await fetch("/api/camfolder/generate-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectName: project.name, address: project.address, trade: project.trade, date: new Date().toISOString().slice(0, 10), fieldNotes: transcript }),
+    });
+    const json = await res.json();
+    if (!res.ok) setError(json.error ?? "Failed");
+    else setReport(json.log);
+    setGenerating(false);
+  }
+
+  async function saveReport() {
+    if (!report.trim()) return;
+    setSaving(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error: err } = await supabase.from("cf_daily_logs").upsert({
+      project_id: project.id, user_id: userId, log_date: today,
+      content: report, raw_notes: transcript,
+    }, { onConflict: "project_id,log_date" }).select().single() as any;
+    if (err) setError(err.message);
+    else { setSaved(true); onSave(data); setTimeout(() => setSaved(false), 3000); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+        <h3 className="text-sm font-bold mb-1" style={{ color: "var(--txt-hi)" }}>🎙️ Walkthrough Notes</h3>
+        <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>Walk the job and talk out loud — AI turns your voice into a formatted daily log.</p>
+
+        {!supported && <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>Speech recognition requires Chrome or Safari.</p>}
+
+        {supported && (
+          <div className="flex flex-col items-center gap-3">
+            <button onClick={recording ? stopRecording : startRecording}
+              className="w-24 h-24 rounded-full text-3xl font-bold transition-all"
+              style={{ background: recording ? "rgba(239,68,68,0.2)" : "var(--surfB)", border: `3px solid ${recording ? "#ef4444" : "var(--bdr)"}`, color: recording ? "#ef4444" : "var(--muted-hi)", boxShadow: recording ? "0 0 0 8px rgba(239,68,68,0.1)" : "none" }}>
+              {recording ? "⏹" : "🎙️"}
+            </button>
+            <p className="text-xs font-semibold" style={{ color: recording ? "#ef4444" : "var(--muted)" }}>
+              {recording ? "Recording… tap to stop" : "Tap to start recording"}
+            </p>
+          </div>
+        )}
+
+        {transcript && (
+          <div className="mt-4 space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Transcript</label>
+            <textarea value={transcript} onChange={e => setTranscript(e.target.value)}
+              rows={5} style={{ ...inputStyle, fontSize: 13, resize: "vertical" }} />
+          </div>
+        )}
+
+        {error && <p className="text-xs rounded-lg px-3 py-2 mt-3" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
+
+        {transcript && (
+          <button onClick={generateReport} disabled={generating}
+            className="w-full mt-3 rounded-xl py-3 text-sm font-bold disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg,#5b5cf6,#7b7cfa)", color: "#fff" }}>
+            {generating ? "✨ Generating…" : "✨ Generate Report from Voice"}
+          </button>
+        )}
+      </div>
+
+      {report && (
+        <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold" style={{ color: "var(--txt-hi)" }}>Generated Report</h3>
+            <button onClick={saveReport} disabled={saving}
+              className="text-xs font-bold rounded-lg px-3 py-1.5 disabled:opacity-50"
+              style={{ background: "var(--green)", color: "#fff" }}>
+              {saving ? "Saving…" : saved ? "✓ Saved!" : "Save as Log"}
+            </button>
+          </div>
+          <textarea value={report} onChange={e => setReport(e.target.value)}
+            rows={16} style={{ ...inputStyle, fontSize: 13, lineHeight: 1.6, resize: "vertical" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Recap Tab ─────────────────────────────────────────────────────────────────
+function RecapTab({ project }: { project: Project }) {
+  const [recap, setRecap] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  async function generate() {
+    setGenerating(true); setError(""); setRecap("");
+    const res = await fetch("/api/camfolder/generate-recap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id }),
+    });
+    const json = await res.json();
+    if (!res.ok) setError(json.error ?? "Failed");
+    else setRecap(json.recap);
+    setGenerating(false);
+  }
+
+  function copy() {
+    navigator.clipboard.writeText(recap);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+        <h3 className="text-sm font-bold mb-1" style={{ color: "var(--txt-hi)" }}>📊 Progress Recap</h3>
+        <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>
+          AI generates a professional summary of all project activity — perfect to share with clients or stakeholders.
+        </p>
+        {error && <p className="text-xs rounded-lg px-3 py-2 mb-3" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
+        <button onClick={generate} disabled={generating}
+          className="w-full rounded-xl py-3 text-sm font-bold disabled:opacity-60"
+          style={{ background: "linear-gradient(135deg,#5b5cf6,#7b7cfa)", color: "#fff" }}>
+          {generating ? "✨ Generating recap…" : "✨ Generate Progress Recap"}
+        </button>
+      </div>
+
+      {recap && (
+        <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold" style={{ color: "var(--txt-hi)" }}>Project Recap</h3>
+            <div className="flex gap-2">
+              <button onClick={copy} className="text-xs font-semibold rounded-lg px-3 py-1.5"
+                style={{ background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--txt)" }}>
+                {copied ? "✓ Copied" : "Copy"}
+              </button>
+              <button onClick={generate} disabled={generating} className="text-xs font-semibold rounded-lg px-3 py-1.5"
+                style={{ background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--muted-hi)" }}>
+                Regenerate
+              </button>
+            </div>
+          </div>
+          <textarea value={recap} onChange={e => setRecap(e.target.value)}
+            rows={16} style={{ ...inputStyle, fontSize: 13, lineHeight: 1.7, resize: "vertical" }} />
         </div>
       )}
     </div>
@@ -1180,16 +1490,20 @@ function ChecklistTab({ project, userId, role }: { project: Project; userId: str
       })}
 
       {canEdit && (
-        <form onSubmit={createChecklist} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--surf)", border: "1px dashed var(--bdr)" }}>
+        <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--surf)", border: "1px dashed var(--bdr)" }}>
           <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--muted)" }}>New Checklist</p>
-          <div className="flex gap-2">
+          <form onSubmit={createChecklist} className="flex gap-2">
             <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Checklist name…" style={{ ...inputStyle, flex: 1, fontSize: 13 }} />
             <button type="submit" disabled={addingList} className="rounded-lg px-3 text-xs font-bold disabled:opacity-50"
               style={{ background: "var(--accent)", color: "#fff" }}>
               {addingList ? "…" : "Create"}
             </button>
-          </div>
-        </form>
+          </form>
+          <ApplyTemplateButton project={project} userId={userId} onApplied={async () => {
+            const { data } = await supabase.from("cf_checklists").select("*").eq("project_id", project.id).order("created_at");
+            setChecklists(data ?? []);
+          }} />
+        </div>
       )}
 
       {checklists.length === 0 && !canEdit && (

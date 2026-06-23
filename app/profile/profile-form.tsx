@@ -4,14 +4,15 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const inputStyle: React.CSSProperties = {
-  background: "var(--surfB)",
-  border: "1px solid var(--bdr)",
-  color: "var(--txt)",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  color: "#0f172a",
   borderRadius: 8,
   padding: "9px 12px",
   fontSize: 13,
   width: "100%",
   outline: "none",
+  boxSizing: "border-box",
 };
 
 const labelStyle: React.CSSProperties = {
@@ -21,7 +22,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: "uppercase" as const,
   letterSpacing: "0.1em",
   marginBottom: 6,
-  color: "var(--muted-hi)",
+  color: "#64748b",
 };
 
 export default function ProfileForm({ currentName, email }: { currentName: string; email: string }) {
@@ -54,87 +55,51 @@ export default function ProfileForm({ currentName, email }: { currentName: strin
     setChangingPw(false);
   }
 
+  const card: React.CSSProperties = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, marginBottom: 16 };
+
   return (
-    <div className="space-y-5">
+    <div>
       {/* Display name */}
-      <div className="rounded-2xl p-5" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
-        <h2 className="text-sm font-bold mb-4" style={{ color: "var(--txt-hi)" }}>Display Name</h2>
-        <form onSubmit={saveName} className="space-y-4">
+      <div style={card}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "0 0 16px" }}>Display Name</h2>
+        <form onSubmit={saveName} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle}>Email</label>
             <input value={email} disabled style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }} />
           </div>
           <div>
             <label style={labelStyle}>Your Name</label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Steven Watwood"
-              required
-              style={inputStyle}
-            />
-            <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
-              This is how you appear in the Members tab on LOCs.
-            </p>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Steven Watwood" required style={inputStyle} />
+            <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>This is how you appear to teammates in Blossomwood Portal.</p>
           </div>
           {nameMsg && (
-            <p className="text-xs rounded-lg px-3 py-2" style={{
-              background: nameMsg.startsWith("Error") ? "rgba(220,38,38,0.15)" : "rgba(5,150,105,0.15)",
-              color: nameMsg.startsWith("Error") ? "var(--red-t)" : "var(--green-t)",
-            }}>
+            <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: nameMsg.startsWith("Error") ? "#fef2f2" : "#f0fdf4", color: nameMsg.startsWith("Error") ? "#dc2626" : "#16a34a" }}>
               {nameMsg}
             </p>
           )}
-          <button
-            type="submit"
-            disabled={saving || !name.trim()}
-            className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity disabled:opacity-40"
-            style={{ background: "var(--accent)", color: "#fff" }}
-          >
+          <button type="submit" disabled={saving || !name.trim()}
+            style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: saving || !name.trim() ? 0.5 : 1 }}>
             {saving ? "Saving…" : "Save Name"}
           </button>
         </form>
       </div>
 
       {/* Change password */}
-      <div className="rounded-2xl p-5" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
-        <h2 className="text-sm font-bold mb-4" style={{ color: "var(--txt-hi)" }}>Change Password</h2>
-        <form onSubmit={savePassword} className="space-y-4">
+      <div style={card}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "0 0 16px" }}>Change Password</h2>
+        <form onSubmit={savePassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle}>New Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              minLength={8}
-              required
-              style={inputStyle}
-            />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" minLength={8} required style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Confirm New Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Repeat password"
-              required
-              style={inputStyle}
-            />
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeat password" required style={inputStyle} />
           </div>
-          {pwErr && (
-            <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{pwErr}</p>
-          )}
-          {pwMsg && (
-            <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>{pwMsg}</p>
-          )}
-          <button
-            type="submit"
-            disabled={changingPw || !password}
-            className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity disabled:opacity-40"
-            style={{ background: "var(--surfB)", color: "var(--txt-hi)", border: "1px solid var(--bdr)" }}
-          >
+          {pwErr && <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: "#fef2f2", color: "#dc2626" }}>{pwErr}</p>}
+          {pwMsg && <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: "#f0fdf4", color: "#16a34a" }}>{pwMsg}</p>}
+          <button type="submit" disabled={changingPw || !password}
+            style={{ background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: changingPw || !password ? 0.5 : 1 }}>
             {changingPw ? "Updating…" : "Update Password"}
           </button>
         </form>

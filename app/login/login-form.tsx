@@ -33,8 +33,7 @@ export default function LoginForm() {
           <p className="text-xs font-bold tracking-[0.14em] uppercase mb-1" style={{ color: "var(--muted)" }}>
             Blossomwood Building
           </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--txt-hi)" }}>LOC Platform</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>Line of Credit Management</p>
+          <h1 className="text-2xl font-bold tracking-wide" style={{ color: "var(--txt-hi)" }}>BLOSSOMWOOD PORTAL</h1>
         </div>
         <div className="rounded-2xl p-6" style={{
           background: "var(--surf)",
