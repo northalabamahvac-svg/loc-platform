@@ -439,6 +439,7 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
   const [loading, setLoading] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<{ email: string; link: string } | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const supabase = createClient();
@@ -476,15 +477,16 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
   }
 
   async function resendInvite(userId: string) {
-    setResending(userId); setMessage(""); setError("");
+    setResending(userId); setMessage(""); setError(""); setResetLink(null);
     const res = await fetch("/api/resend-invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, locId }),
     });
     const json = await res.json();
-    if (!res.ok) setError(json.error ?? "Failed to resend");
-    else setMessage(`Password reset link sent to ${json.email}`);
+    if (!res.ok) { setError(json.error ?? "Failed to resend"); }
+    else if (json.link) { setResetLink({ email: json.email, link: json.link }); }
+    else { setMessage(`Reset email sent to ${json.email}`); }
     setResending(null);
   }
 
@@ -496,6 +498,23 @@ function MembersTab({ members: initialMembers, locId, role, currentUserId }: {
         </h3>
         {error && <p className="text-xs rounded-lg px-3 py-2 mb-3" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
         {message && <p className="text-xs rounded-lg px-3 py-2 mb-3" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>{message}</p>}
+        {resetLink && (
+          <div className="rounded-lg px-3 py-3 mb-3 space-y-2" style={{ background: "rgba(91,92,246,0.1)", border: "1px solid rgba(91,92,246,0.3)" }}>
+            <p className="text-xs font-bold" style={{ color: "var(--accent-hi)" }}>
+              Setup link for {resetLink.email} — copy and send manually:
+            </p>
+            <p className="text-xs break-all rounded px-2 py-1.5 select-all" style={{ background: "var(--surfB)", color: "var(--txt)", fontFamily: "monospace" }}>
+              {resetLink.link}
+            </p>
+            <button
+              onClick={() => { navigator.clipboard.writeText(resetLink.link); setMessage("Link copied!"); setResetLink(null); }}
+              className="text-xs font-bold rounded-lg px-3 py-1.5 transition-opacity hover:opacity-80"
+              style={{ background: "var(--accent)", color: "#fff" }}
+            >
+              Copy Link
+            </button>
+          </div>
+        )}
         <div className="space-y-2">
           {members.map((m, i) => (
             <div key={m.id} className="flex items-center justify-between py-2" style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>

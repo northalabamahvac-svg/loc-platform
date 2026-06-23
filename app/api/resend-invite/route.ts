@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
   const email = target.user.email;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  // Generate a recovery link — this sends the email AND redirects to set-password
-  const { error: resetErr } = await admin.auth.admin.generateLink({
+  // Generate a recovery link — returns the link directly so owner can share manually
+  const { data: linkData, error: resetErr } = await admin.auth.admin.generateLink({
     type: "recovery",
     email,
     options: { redirectTo: `${siteUrl}/auth/set-password` },
@@ -41,5 +41,6 @@ export async function POST(req: NextRequest) {
 
   if (resetErr) return NextResponse.json({ error: resetErr.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, email });
+  const link = (linkData as any)?.properties?.action_link ?? null;
+  return NextResponse.json({ ok: true, email, link });
 }
