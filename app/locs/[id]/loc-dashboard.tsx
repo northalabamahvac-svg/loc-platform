@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import type { CalcResult, Transaction } from "@/lib/calc";
 import { calcLoc } from "@/lib/calc";
 import { TrendingDown, Users } from "lucide-react";
+import DocsTab from "@/components/docs-tab";
+import AmortizationModal from "@/components/amortization-modal";
 
 const MONO = 'ui-monospace,"SF Mono",Menlo,monospace';
 
@@ -38,7 +39,7 @@ interface Props {
   userId: string;
 }
 
-type Tab = "overview" | "history" | "members";
+type Tab = "overview" | "history" | "docs" | "members";
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surfB)",
@@ -55,6 +56,7 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
   const [tab, setTab] = useState<Tab>("overview");
   const [txs, setTxs] = useState(transactions);
   const [result, setResult] = useState(initialResult);
+  const [showAmort, setShowAmort] = useState(false);
   const supabase = createClient();
 
   function refreshCalc(newTxs: Transaction[]) {
@@ -67,6 +69,18 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+      {showAmort && (
+        <AmortizationModal
+          principal={result.principal / 100}
+          accruedInterest={result.accruedInterest / 100}
+          dailyInterest={result.dailyInterest / 100}
+          apr={loc.apr}
+          lenderName={loc.lender_name}
+          borrowerName={loc.borrower_name}
+          onClose={() => setShowAmort(false)}
+        />
+      )}
+
       {/* Balance card */}
       <div className="rounded-2xl p-5" style={{
         background: "linear-gradient(145deg,#12122a 0%,#0c0c1e 100%)",
@@ -99,26 +113,37 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
           <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--bdr)" }}>
             <div className="h-full rounded-full transition-all" style={{ width: `${usedPct}%`, background: "var(--accent)" }} />
           </div>
-          <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
-            {fmt(loc.ceiling_cents)} ceiling · {(loc.apr * 100).toFixed(1)}% APR
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              {fmt(loc.ceiling_cents)} ceiling · {(loc.apr * 100).toFixed(1)}% APR
+            </p>
+            {result.principal > 0 && (
+              <button
+                onClick={() => setShowAmort(true)}
+                className="text-xs font-semibold hover:opacity-70 transition-opacity"
+                style={{ color: "var(--accent-hi)" }}
+              >
+                Amortization →
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--surfB)" }}>
-        {(["overview", "history", "members"] as Tab[]).map(t => (
+        {(["overview", "history", "docs", "members"] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className="flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-all"
+            className="flex-1 rounded-lg py-2 text-xs font-semibold capitalize transition-all"
             style={{
               background: tab === t ? "var(--surf)" : "transparent",
               color: tab === t ? "var(--txt-hi)" : "var(--muted)",
               border: tab === t ? "1px solid var(--bdr)" : "1px solid transparent",
             }}
           >
-            {t}
+            {t === "docs" ? "Docs" : t}
           </button>
         ))}
       </div>
@@ -128,6 +153,9 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
       )}
       {tab === "history" && (
         <HistoryTab txs={txs} role={role} locId={loc.id} onRefresh={refreshCalc} apr={loc.apr} />
+      )}
+      {tab === "docs" && (
+        <DocsTab locId={loc.id} role={role} />
       )}
       {tab === "members" && (
         <MembersTab members={members} locId={loc.id} role={role} currentUserId={userId} />
@@ -224,47 +252,20 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
           <form onSubmit={submit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
-                  Amount ($)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  required
-                  placeholder="0.00"
-                  style={inputStyle}
-                />
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Amount ($)</label>
+                <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="0.00" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Date</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={inputStyle} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>
-                Note (optional)
-              </label>
-              <input
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="What is this for?"
-                style={inputStyle}
-              />
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: "var(--muted-hi)" }}>Note (optional)</label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="What is this for?" style={inputStyle} />
             </div>
             {error && (
-              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>
-                {error}
-              </p>
+              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>
             )}
             <button
               type="submit"
@@ -278,19 +279,12 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
         </div>
       )}
 
-      {/* Recent activity */}
       {recent.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
-          <p className="text-xs font-bold px-4 pt-4 pb-2 uppercase tracking-wide" style={{ color: "var(--muted)" }}>
-            Recent Activity
-          </p>
+          <p className="text-xs font-bold px-4 pt-4 pb-2 uppercase tracking-wide" style={{ color: "var(--muted)" }}>Recent Activity</p>
           <div>
             {recent.map((tx, i) => (
-              <div
-                key={tx.id}
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}
-              >
+              <div key={tx.id} className="px-4 py-3 flex items-center justify-between" style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--txt)" }}>
                     {tx.type === "draw" ? "Draw" : "Payment"}
@@ -300,10 +294,7 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
                     {new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
-                <span
-                  className="text-sm font-bold"
-                  style={{ fontFamily: MONO, color: tx.type === "draw" ? "var(--amber-t)" : "var(--green-t)" }}
-                >
+                <span className="text-sm font-bold" style={{ fontFamily: MONO, color: tx.type === "draw" ? "var(--amber-t)" : "var(--green-t)" }}>
                   {tx.type === "draw" ? "+" : "−"}{fmt(tx.amount_cents)}
                 </span>
               </div>
@@ -322,7 +313,6 @@ function HistoryTab({ txs, role, locId, onRefresh, apr }: {
 }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const supabase = createClient();
-
   const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
 
   async function deleteTx(id: string) {
@@ -333,21 +323,13 @@ function HistoryTab({ txs, role, locId, onRefresh, apr }: {
   }
 
   if (sorted.length === 0) {
-    return (
-      <p className="text-center text-sm py-12" style={{ color: "var(--muted)" }}>
-        No transactions yet.
-      </p>
-    );
+    return <p className="text-center text-sm py-12" style={{ color: "var(--muted)" }}>No transactions yet.</p>;
   }
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
       {sorted.map((tx, i) => (
-        <div
-          key={tx.id}
-          className="px-4 py-3 flex items-center gap-3"
-          style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}
-        >
+        <div key={tx.id} className="px-4 py-3 flex items-center gap-3" style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold capitalize" style={{ color: "var(--txt)" }}>
               {tx.type}
@@ -357,19 +339,13 @@ function HistoryTab({ txs, role, locId, onRefresh, apr }: {
               {new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </p>
           </div>
-          <span
-            className="text-sm font-bold flex-shrink-0"
-            style={{ fontFamily: MONO, color: tx.type === "draw" ? "var(--amber-t)" : "var(--green-t)" }}
-          >
+          <span className="text-sm font-bold flex-shrink-0" style={{ fontFamily: MONO, color: tx.type === "draw" ? "var(--amber-t)" : "var(--green-t)" }}>
             {tx.type === "draw" ? "+" : "−"}{fmt(tx.amount_cents)}
           </span>
           {role === "owner" && (
-            <button
-              onClick={() => deleteTx(tx.id)}
-              disabled={deleting === tx.id}
+            <button onClick={() => deleteTx(tx.id)} disabled={deleting === tx.id}
               className="text-xs flex-shrink-0 transition-opacity hover:opacity-80 disabled:opacity-30"
-              style={{ color: "var(--red-t)" }}
-            >
+              style={{ color: "var(--red-t)" }}>
               {deleting === tx.id ? "…" : "Delete"}
             </button>
           )}
@@ -411,11 +387,7 @@ function MembersTab({ members, locId, role, currentUserId }: {
         </h3>
         <div className="space-y-2">
           {members.map((m, i) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between py-2"
-              style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}
-            >
+            <div key={m.id} className="flex items-center justify-between py-2" style={{ borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>
               <span className="text-sm" style={{ color: "var(--txt)" }}>
                 {m.user_id === currentUserId ? "You" : m.user_id.slice(0, 8) + "…"}
               </span>
@@ -434,52 +406,30 @@ function MembersTab({ members, locId, role, currentUserId }: {
         <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
           <h3 className="text-sm font-bold mb-3" style={{ color: "var(--txt-hi)" }}>Invite someone</h3>
           <form onSubmit={invite} className="space-y-3">
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="their@email.com"
-              required
-              style={inputStyle}
-            />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="their@email.com" required style={inputStyle} />
             <div className="flex gap-2">
               {(["viewer", "owner"] as const).map(r => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setInviteRole(r)}
+                <button key={r} type="button" onClick={() => setInviteRole(r)}
                   className="flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-all"
                   style={{
                     background: inviteRole === r ? "var(--accent)" : "var(--surfB)",
                     color: inviteRole === r ? "#fff" : "var(--muted-hi)",
                     border: `1px solid ${inviteRole === r ? "var(--accent)" : "var(--bdr)"}`,
-                  }}
-                >
+                  }}>
                   {r}
                 </button>
               ))}
             </div>
-            {error && (
-              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>
-                {error}
-              </p>
-            )}
-            {message && (
-              <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>
-                {message}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
+            {error && <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
+            {message && <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(5,150,105,0.15)", color: "var(--green-t)" }}>{message}</p>}
+            <button type="submit" disabled={loading}
               className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity disabled:opacity-50"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
+              style={{ background: "var(--accent)", color: "#fff" }}>
               {loading ? "Sending…" : "Send Invite"}
             </button>
           </form>
           <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
-            They&apos;ll get an email to create their account and will automatically have access to this LOC.
+            They&apos;ll receive an email to set a password and will automatically have access to this LOC.
           </p>
         </div>
       )}

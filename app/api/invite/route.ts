@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   // Invite new user — they get an email to set their password
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl}/auth/confirm`,
+    redirectTo: `${siteUrl}/auth/set-password`,
     data: { pending_loc_id: locId, pending_role: role },
   });
 
