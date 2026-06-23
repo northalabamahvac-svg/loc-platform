@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function createLoc(formData: {
@@ -16,7 +16,9 @@ export async function createLoc(formData: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data: loc, error } = await supabase
+  const admin = createServiceClient();
+
+  const { data: loc, error } = await admin
     .from("locs")
     .insert(formData)
     .select()
@@ -24,7 +26,7 @@ export async function createLoc(formData: {
 
   if (error) throw new Error(error.message);
 
-  await supabase.from("loc_members").insert({
+  await admin.from("loc_members").insert({
     loc_id: loc.id,
     user_id: user.id,
     role: "owner",
