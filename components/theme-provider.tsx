@@ -11,21 +11,30 @@ const THEMES = {
 } as const;
 
 type ThemeName = keyof typeof THEMES;
+type BgName = "dark" | "houston";
+
+const DARK_BG = "linear-gradient(rgba(5,5,18,0.72),rgba(5,5,18,0.72)), linear-gradient(160deg,#0a0a1f 0%,#050510 40%,#080818 100%)";
+const HOUSTON_BG = "url('/michael.jpg')";
 
 const ThemeContext = createContext<{
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
-}>({ theme: "cosmic", setTheme: () => {} });
+  bg: BgName;
+  setBg: (b: BgName) => void;
+}>({ theme: "cosmic", setTheme: () => {}, bg: "dark", setBg: () => {} });
 
 export function useTheme() { return useContext(ThemeContext); }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>("cosmic");
+  const [bg, setBgState] = useState<BgName>("dark");
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("loc-theme") as ThemeName;
       if (saved && THEMES[saved]) setThemeState(saved);
+      const savedBg = localStorage.getItem("loc-bg") as BgName;
+      if (savedBg === "dark" || savedBg === "houston") setBgState(savedBg);
     } catch {}
   }, []);
 
@@ -36,14 +45,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem("loc-theme", theme); } catch {}
   }, [theme]);
 
+  useEffect(() => {
+    if (bg === "houston") {
+      document.body.style.backgroundImage = HOUSTON_BG;
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+      document.body.style.backgroundAttachment = "fixed";
+      document.body.style.backgroundRepeat = "no-repeat";
+    } else {
+      document.body.style.backgroundImage = DARK_BG;
+      document.body.style.backgroundSize = "";
+      document.body.style.backgroundPosition = "";
+      document.body.style.backgroundAttachment = "";
+      document.body.style.backgroundRepeat = "";
+    }
+    try { localStorage.setItem("loc-bg", bg); } catch {}
+  }, [bg]);
+
   function setTheme(t: ThemeName) { setThemeState(t); }
+  function setBg(b: BgName) { setBgState(b); }
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, bg, setBg }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
 export { THEMES };
-export type { ThemeName };
+export type { ThemeName, BgName };

@@ -12,7 +12,7 @@ const THEME_LABELS: Record<ThemeName, string> = {
 };
 
 export default function ThemePicker() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, bg, setBg } = useTheme();
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,11 +33,11 @@ export default function ThemePicker() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="absolute right-0 top-10 z-50 rounded-xl p-3 w-44 space-y-1 shadow-xl"
+            className="absolute right-0 top-10 z-50 rounded-xl p-3 w-48 space-y-1 shadow-xl"
             style={{ background: "var(--surf)", border: "1px solid var(--bdrA)" }}
           >
             <p className="text-xs font-bold uppercase tracking-wider mb-2 px-1" style={{ color: "var(--muted)" }}>
-              Theme
+              Color Theme
             </p>
             {(Object.keys(THEMES) as ThemeName[]).map(t => (
               <button
@@ -50,10 +50,7 @@ export default function ThemePicker() {
                   border: theme === t ? "1px solid var(--bdr)" : "1px solid transparent",
                 }}
               >
-                <span
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ background: THEMES[t].accent }}
-                />
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: THEMES[t].accent }} />
                 {THEME_LABELS[t]}
                 {theme === t && (
                   <svg className="ml-auto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
@@ -62,6 +59,38 @@ export default function ThemePicker() {
                 )}
               </button>
             ))}
+
+            <div style={{ borderTop: "1px solid var(--bdr)", marginTop: 8, paddingTop: 8 }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2 px-1" style={{ color: "var(--muted)" }}>
+                Background
+              </p>
+              {([
+                { key: "dark" as const, label: "Dark Space", swatch: "linear-gradient(135deg,#0a0a1f,#050510)" },
+                { key: "houston" as const, label: "Houston 🤠", swatch: "url('/michael.jpg')" },
+              ]).map(b => (
+                <button
+                  key={b.key}
+                  onClick={() => { setBg(b.key); setOpen(false); }}
+                  className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-medium transition-all hover:opacity-80"
+                  style={{
+                    background: bg === b.key ? "var(--surfB)" : "transparent",
+                    color: bg === b.key ? "var(--txt-hi)" : "var(--muted-hi)",
+                    border: bg === b.key ? "1px solid var(--bdr)" : "1px solid transparent",
+                  }}
+                >
+                  <span
+                    className="w-5 h-5 rounded flex-shrink-0"
+                    style={{ backgroundImage: b.swatch, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--bdr)" }}
+                  />
+                  {b.label}
+                  {bg === b.key && (
+                    <svg className="ml-auto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </>
       )}

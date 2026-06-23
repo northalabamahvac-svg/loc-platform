@@ -7,6 +7,9 @@ import { calcLoc } from "@/lib/calc";
 import { TrendingDown, Users } from "lucide-react";
 import DocsTab from "@/components/docs-tab";
 import AmortizationModal from "@/components/amortization-modal";
+import DebtScore from "@/components/debt-score";
+import CreditLinks from "@/components/credit-links";
+import EasterEggGames from "@/components/games";
 
 const MONO = 'ui-monospace,"SF Mono",Menlo,monospace';
 
@@ -57,7 +60,6 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
   const [txs, setTxs] = useState(transactions);
   const [result, setResult] = useState(initialResult);
   const [showAmort, setShowAmort] = useState(false);
-  const supabase = createClient();
 
   function refreshCalc(newTxs: Transaction[]) {
     setTxs(newTxs);
@@ -69,6 +71,11 @@ export default function LocDashboard({ loc, transactions, result: initialResult,
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+      {/* Games launcher — floating bottom right */}
+      <div className="fixed bottom-6 right-4 z-30">
+        <EasterEggGames />
+      </div>
+
       {showAmort && (
         <AmortizationModal
           principal={result.principal / 100}
@@ -278,6 +285,14 @@ function OverviewTab({ loc, result, txs, role, onRefresh }: {
           </form>
         </div>
       )}
+
+      <DebtScore
+        transactions={txs}
+        principal={result.principal / 100}
+        totalDrawn={txs.filter(t => t.type === "draw").reduce((s, t) => s + t.amount_cents, 0) / 100}
+      />
+
+      {role === "viewer" && <CreditLinks />}
 
       {recent.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
