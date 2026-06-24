@@ -38,6 +38,9 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
   const [reviewName, setReviewName] = useState("");
   const [reviewEmail, setReviewEmail] = useState("");
   const [reviewCopied, setReviewCopied] = useState(false);
+  const [reviewSending, setReviewSending] = useState(false);
+  const [reviewSent, setReviewSent] = useState(false);
+  const [reviewSendError, setReviewSendError] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -159,7 +162,7 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
         const msg = `Hi ${reviewName || "there"},\n\nThank you for choosing us for your${project.trade ? ` ${project.trade.toLowerCase()}` : ""} project${project.address ? ` at ${project.address}` : ""}!\n\nWe'd love to hear about your experience. If you have a moment, please consider leaving us a quick Google review — it means the world to our small team.\n\n⭐ Leave a review here:\n${googleReviewUrl || "[Add your Google Review link in Profile settings]"}\n\nThank you so much for your support!\n${signature}`;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-            onClick={() => setShowReviewModal(false)}>
+            onClick={() => { setShowReviewModal(false); setReviewSent(false); setReviewSendError(""); }}>
             <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "8px 20px 40px", width: "100%", maxWidth: 560, maxHeight: "88vh", overflowY: "auto" }}
               onClick={e => e.stopPropagation()}>
               <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e5e7eb", margin: "10px auto 20px" }} />
@@ -208,11 +211,40 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
-                    <a
-                      href={`mailto:${reviewEmail}?subject=Thank you — we'd love your feedback!&body=${encodeURIComponent(msg)}`}
-                      style={{ display: "block", textAlign: "center", background: "#4a7a9b", color: "#fff", borderRadius: 10, padding: "13px 0", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
-                      📧 Open in Email App
-                    </a>
+                    {reviewSent ? (
+                      <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 10, padding: "13px 0", textAlign: "center", fontWeight: 700, fontSize: 15, color: "#16a34a" }}>
+                        ✅ Email sent to {reviewEmail}!
+                      </div>
+                    ) : (
+                      <button
+                        disabled={reviewSending || !reviewEmail}
+                        onClick={async () => {
+                          if (!reviewEmail) return;
+                          setReviewSending(true); setReviewSendError("");
+                          const res = await fetch("/api/camfolder/send-review-request", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              customerName: reviewName,
+                              customerEmail: reviewEmail,
+                              projectName: project.name,
+                              projectAddress: project.address,
+                              projectTrade: project.trade,
+                              googleReviewUrl,
+                              businessEmail,
+                            }),
+                          });
+                          const data = await res.json();
+                          if (data.error) { setReviewSendError(data.error); } else { setReviewSent(true); }
+                          setReviewSending(false);
+                        }}
+                        style={{ background: reviewSending ? "#94a3b8" : "#4a7a9b", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontWeight: 700, fontSize: 15, cursor: reviewSending || !reviewEmail ? "default" : "pointer", opacity: !reviewEmail ? 0.5 : 1 }}>
+                        {reviewSending ? "Sending…" : "📧 Send Email"}
+                      </button>
+                    )}
+                    {reviewSendError && (
+                      <p style={{ fontSize: 12, color: "#dc2626", background: "#fef2f2", borderRadius: 8, padding: "8px 12px", margin: 0 }}>{reviewSendError}</p>
+                    )}
                     <button
                       onClick={() => { navigator.clipboard.writeText(msg); setReviewCopied(true); setTimeout(() => setReviewCopied(false), 2000); }}
                       style={{ background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 10, padding: "13px 0", fontWeight: 700, fontSize: 15, cursor: "pointer", color: "#1a2a38" }}>
