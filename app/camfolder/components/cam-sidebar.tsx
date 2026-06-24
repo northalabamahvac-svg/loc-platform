@@ -6,9 +6,14 @@ import { useState } from "react";
 
 type NavItem = { href: string; label: string; icon: string };
 const NAV: NavItem[] = [
-  { href: "/camfolder",           label: "Projects",  icon: "🏗️" },
-  { href: "/camfolder/map",       label: "Live Map",  icon: "📍" },
-  { href: "/camfolder/templates", label: "Templates", icon: "📋" },
+  { href: "/camfolder",              label: "Projects",   icon: "🏗️" },
+  { href: "/camfolder/map",          label: "Live Map",   icon: "📍" },
+  { href: "/camfolder/templates",    label: "Templates",  icon: "📋" },
+  { href: "/camfolder/bookings",     label: "Bookings",   icon: "📥" },
+  { href: "/camfolder/dispatch",     label: "Dispatch",   icon: "📅" },
+  { href: "/camfolder/analytics",    label: "Analytics",  icon: "📊" },
+  { href: "/camfolder/memberships",  label: "Members",    icon: "🤝" },
+  { href: "/camfolder/followups",    label: "Follow-ups", icon: "✉️" },
 ];
 
 export default function CamSidebar({ userName }: { userName: string }) {

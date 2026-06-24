@@ -6,7 +6,7 @@ import Link from "next/link";
 import ThemePicker from "@/components/theme-picker";
 import SignOutButton from "@/components/sign-out-button";
 
-interface Project { id: string; name: string; address: string | null; trade: string | null; status: string; }
+interface Project { id: string; name: string; address: string | null; trade: string | null; status: string; budget_cents?: number | null; customer_name?: string | null; customer_email?: string | null; customer_phone?: string | null; }
 interface Photo { id: string; storage_url: string; note: string | null; tags: string[] | null; gps_lat: number | null; gps_lng: number | null; taken_at: string; }
 interface DailyLog { id: string; log_date: string; content: string; raw_notes: string | null; created_at: string; }
 interface Checklist { id: string; name: string; created_at: string; }
@@ -14,7 +14,7 @@ interface ChecklistItem { id: string; checklist_id: string; label: string; requi
 interface SigRequest { id: string; title: string; message: string | null; token: string; status: string; signer_name: string | null; signed_at: string | null; signature_url: string | null; created_at: string; }
 
 interface Comment { id: string; user_id: string; content: string; created_at: string; }
-type Tab = "feed" | "photos" | "before-after" | "checklist" | "daily-log" | "walkthrough" | "recap" | "past-logs" | "signatures" | "share" | "team";
+type Tab = "feed" | "photos" | "before-after" | "checklist" | "daily-log" | "walkthrough" | "recap" | "past-logs" | "signatures" | "share" | "team" | "estimates" | "briefing" | "costs";
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--txt)",
@@ -56,6 +56,9 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
     { key: "daily-log",   label: "🤖", fullLabel: "AI Log",      hide: role === "viewer" },
     { key: "walkthrough", label: "🎙️", fullLabel: "Walkthrough", hide: role === "viewer" },
     { key: "signatures",  label: "✍️",  fullLabel: "Signatures",  hide: role === "viewer" },
+    { key: "estimates",   label: "💰", fullLabel: "Estimates",   hide: role === "viewer" },
+    { key: "briefing",    label: "🧠", fullLabel: "Briefing",    hide: role === "viewer" },
+    { key: "costs",       label: "💵", fullLabel: "Costs",       hide: role === "viewer" },
     { key: "share",       label: "🔗", fullLabel: "Share",       hide: role !== "owner" },
     { key: "team",        label: "👥", fullLabel: "Team",        hide: role !== "owner" },
   ];
@@ -139,8 +142,11 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
         {tab === "recap"        && <RecapTab project={project} />}
         {tab === "past-logs"    && <PastLogsTab logs={logs} onDelete={id => setLogs(prev => prev.filter(l => l.id !== id))} />}
         {tab === "signatures"   && role !== "viewer" && <SignaturesTab project={project} userId={userId} role={role} />}
+        {tab === "estimates"    && role !== "viewer" && <EstimatesTab project={project} userId={userId} />}
         {tab === "share"        && role === "owner" && <ShareTab project={project} />}
         {tab === "team"         && role === "owner" && <TeamTab project={project} userId={userId} />}
+        {tab === "briefing"     && role !== "viewer" && <BriefingTab project={project} photos={photos} logs={logs} />}
+        {tab === "costs"        && role !== "viewer" && <CostsTab project={project} userId={userId} role={role} />}
       </main>
 
       {/* ── Google Review Request Modal ─────────────────── */}
@@ -1593,6 +1599,228 @@ function ChecklistTab({ project, userId, role }: { project: Project; userId: str
   );
 }
 
+// ─── Estimates Tab ────────────────────────────────────────────────────────────
+interface Estimate { id: string; title: string; status: string; accepted_tier: string | null; token: string; notes: string | null; created_at: string; }
+interface EstimateTier { id: string; tier: string; label: string; price_cents: number; description: string; includes: string[]; }
+
+function EstimatesTab({ project, userId }: { project: Project; userId: string }) {
+  const supabase = createClient();
+  const [estimates, setEstimates] = useState<Estimate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState("");
+  const [tiers, setTiers] = useState([
+    { tier: "good",   label: "Good",   price: "", description: "", includes: [""] },
+    { tier: "better", label: "Better", price: "", description: "", includes: [""] },
+    { tier: "best",   label: "Best",   price: "", description: "", includes: [""] },
+  ]);
+  const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+
+  useEffect(() => {
+    supabase.from("cf_estimates").select("*").eq("project_id", project.id).order("created_at", { ascending: false })
+      .then(({ data }) => { setEstimates(data ?? []); setLoading(false); });
+  }, [project.id]);
+
+  function updateTierIncludes(idx: number, bIdx: number, val: string) {
+    setTiers(prev => prev.map((t, i) => i !== idx ? t : { ...t, includes: t.includes.map((b, j) => j === bIdx ? val : b) }));
+  }
+  function addInclude(idx: number) {
+    setTiers(prev => prev.map((t, i) => i !== idx || t.includes.length >= 5 ? t : { ...t, includes: [...t.includes, ""] }));
+  }
+  function removeInclude(idx: number, bIdx: number) {
+    setTiers(prev => prev.map((t, i) => i !== idx ? t : { ...t, includes: t.includes.filter((_, j) => j !== bIdx) }));
+  }
+  function updateTierField(idx: number, field: string, val: string) {
+    setTiers(prev => prev.map((t, i) => i !== idx ? t : { ...t, [field]: val }));
+  }
+
+  async function saveEstimate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    const { data: est } = await supabase.from("cf_estimates").insert({
+      project_id: project.id, created_by: userId, title: title.trim(),
+      notes: notes.trim() || null, status: "draft",
+      token: crypto.randomUUID(),
+    }).select().single() as any;
+    if (est) {
+      await supabase.from("cf_estimate_tiers").insert(
+        tiers.map((t, i) => ({
+          estimate_id: est.id, tier: t.tier, label: t.label,
+          price_cents: Math.round(parseFloat(t.price || "0") * 100),
+          description: t.description,
+          includes: t.includes.filter(Boolean),
+          position: i,
+        }))
+      );
+      setEstimates(prev => [est, ...prev]);
+    }
+    setShowForm(false); setTitle(""); setNotes("");
+    setTiers([
+      { tier: "good",   label: "Good",   price: "", description: "", includes: [""] },
+      { tier: "better", label: "Better", price: "", description: "", includes: [""] },
+      { tier: "best",   label: "Best",   price: "", description: "", includes: [""] },
+    ]);
+    setSaving(false);
+  }
+
+  async function sendEstimate(est: Estimate) {
+    setSending(est.id);
+    await supabase.from("cf_estimates").update({ status: "sent" }).eq("id", est.id);
+    setEstimates(prev => prev.map(e => e.id === est.id ? { ...e, status: "sent" } : e));
+    setSending(null);
+  }
+
+  function copyLink(token: string) {
+    navigator.clipboard.writeText(`${siteUrl}/estimate/${token}`);
+    setCopiedId(token);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
+    draft:    { bg: "#f1f5f9", color: "#64748b" },
+    sent:     { bg: "#dbeafe", color: "#1d4ed8" },
+    accepted: { bg: "#dcfce7", color: "#16a34a" },
+    declined: { bg: "#fee2e2", color: "#dc2626" },
+  };
+
+  if (loading) return <p style={{ color: "#94a3b8", textAlign: "center", padding: 32 }}>Loading…</p>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h3 style={{ fontSize: 15, fontWeight: 800, color: "#1a2a38", margin: 0 }}>💰 Estimates</h3>
+        <button onClick={() => setShowForm(s => !s)}
+          style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          {showForm ? "Cancel" : "+ New Estimate"}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={saveEstimate} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 }}>Estimate Title *</label>
+            <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. HVAC System Replacement"
+              style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", color: "#1a2a38" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: 5 }}>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+              style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", color: "#1a2a38", resize: "vertical" }} />
+          </div>
+
+          {tiers.map((t, idx) => (
+            <div key={t.tier} style={{ background: "#f3f7fa", borderRadius: 12, padding: 16, border: "1px solid #e2e8f0" }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#1a2a38", marginBottom: 12 }}>
+                {t.tier === "good" ? "✅" : t.tier === "better" ? "⭐" : "🏆"} {t.label}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Label</label>
+                  <input value={t.label} onChange={e => updateTierField(idx, "label", e.target.value)}
+                    style={{ width: "100%", boxSizing: "border-box", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "7px 10px", fontSize: 13, outline: "none" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Price ($)</label>
+                  <input type="number" step="0.01" min="0" value={t.price} onChange={e => updateTierField(idx, "price", e.target.value)}
+                    placeholder="0.00"
+                    style={{ width: "100%", boxSizing: "border-box", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "7px 10px", fontSize: 13, outline: "none" }} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>Description</label>
+                <input value={t.description} onChange={e => updateTierField(idx, "description", e.target.value)}
+                  placeholder="Short description…"
+                  style={{ width: "100%", boxSizing: "border-box", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "7px 10px", fontSize: 13, outline: "none" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>What's Included</label>
+                {t.includes.map((bullet, bIdx) => (
+                  <div key={bIdx} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                    <input value={bullet} onChange={e => updateTierIncludes(idx, bIdx, e.target.value)}
+                      placeholder={`Item ${bIdx + 1}…`}
+                      style={{ flex: 1, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "6px 10px", fontSize: 13, outline: "none" }} />
+                    {t.includes.length > 1 && (
+                      <button type="button" onClick={() => removeInclude(idx, bIdx)}
+                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 16, padding: "0 4px" }}>×</button>
+                    )}
+                  </div>
+                ))}
+                {t.includes.length < 5 && (
+                  <button type="button" onClick={() => addInclude(idx)}
+                    style={{ fontSize: 12, color: "#4a7a9b", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>
+                    + Add item
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <button type="submit" disabled={saving}
+            style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
+            {saving ? "Saving…" : "💾 Save Estimate"}
+          </button>
+        </form>
+      )}
+
+      {estimates.length === 0 && !showForm && (
+        <div style={{ textAlign: "center", padding: 40, border: "1px dashed #e2e8f0", borderRadius: 16 }}>
+          <p style={{ fontSize: 28, marginBottom: 8 }}>💰</p>
+          <p style={{ color: "#94a3b8", fontSize: 14 }}>No estimates yet — create your first Good/Better/Best estimate</p>
+        </div>
+      )}
+
+      {estimates.map(est => {
+        const ss = STATUS_STYLE[est.status] ?? STATUS_STYLE.draft;
+        return (
+          <div key={est.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#1a2a38", margin: 0 }}>{est.title}</p>
+                {est.notes && <p style={{ fontSize: 12, color: "#64748b", margin: "3px 0 0" }}>{est.notes}</p>}
+                <p style={{ fontSize: 11, color: "#94a3b8", margin: "4px 0 0" }}>{formatDate(est.created_at)}</p>
+              </div>
+              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, borderRadius: 99, padding: "3px 10px", background: ss.bg, color: ss.color, textTransform: "capitalize" }}>
+                {est.status}
+              </span>
+            </div>
+
+            {est.accepted_tier && (
+              <div style={{ background: "#dcfce7", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>
+                <p style={{ fontSize: 12, color: "#16a34a", fontWeight: 700, margin: 0 }}>
+                  ✓ Customer selected: {est.accepted_tier.charAt(0).toUpperCase() + est.accepted_tier.slice(1)} plan
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {est.status === "draft" && (
+                <button onClick={() => sendEstimate(est)} disabled={sending === est.id}
+                  style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: sending === est.id ? 0.6 : 1 }}>
+                  {sending === est.id ? "Sending…" : "📤 Send to Customer"}
+                </button>
+              )}
+              {est.status !== "draft" && (
+                <button onClick={() => copyLink(est.token)}
+                  style={{ background: "#f1f5f9", color: "#4a7a9b", border: "1px solid #e2e8f0", borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  {copiedId === est.token ? "✓ Copied!" : "🔗 Copy Link"}
+                </button>
+              )}
+              <a href={`/estimate/${est.token}`} target="_blank" rel="noreferrer"
+                style={{ background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                Preview
+              </a>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Past Logs Tab ─────────────────────────────────────────────────────────────
 function PastLogsTab({ logs, onDelete }: { logs: DailyLog[]; onDelete: (id: string) => void }) {
   const supabase = createClient();
@@ -1671,6 +1899,297 @@ function PastLogsTab({ logs, onDelete }: { logs: DailyLog[]; onDelete: (id: stri
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Briefing Tab ──────────────────────────────────────────────────────────────
+function BriefingTab({ project, photos, logs }: { project: Project; photos: Photo[]; logs: DailyLog[] }) {
+  const [loading, setLoading] = useState(false);
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  async function generate() {
+    setLoading(true); setError(""); setBriefing(null);
+    try {
+      const res = await fetch("/api/camfolder/briefing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project, photos: photos.slice(0, 10), logs: logs.slice(0, 5) }),
+      });
+      if (!res.ok) throw new Error("Failed to generate briefing");
+      const json = await res.json();
+      setBriefing(json.briefing);
+    } catch (e: any) {
+      setError(e.message ?? "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function parseSections(text: string) {
+    const sections = [
+      { key: "Job Summary",                icon: "📋" },
+      { key: "Recent Site Conditions",      icon: "📸" },
+      { key: "Watch Out For",              icon: "⚠️" },
+      { key: "Recommended Parts to Bring", icon: "🔧" },
+    ];
+    const result: { icon: string; title: string; body: string }[] = [];
+    const lines = text.split("\n");
+    let current: { icon: string; title: string; body: string } | null = null;
+    for (const line of lines) {
+      const match = sections.find(s => line.toLowerCase().includes(s.key.toLowerCase()));
+      if (match) {
+        if (current) result.push(current);
+        current = { icon: match.icon, title: match.key, body: "" };
+      } else if (current) {
+        current.body += (current.body ? "\n" : "") + line;
+      }
+    }
+    if (current) result.push(current);
+    if (result.length === 0) return [{ icon: "🧠", title: "Briefing", body: text }];
+    return result.map(s => ({ ...s, body: s.body.trim() }));
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {(project.customer_name || project.customer_email || project.customer_phone) && (
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "16px 18px" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>Customer Info</p>
+          {project.customer_name && <p style={{ fontSize: 15, fontWeight: 700, color: "#1a2a38", margin: "0 0 4px" }}>{project.customer_name}</p>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {project.customer_email && (
+              <a href={`mailto:${project.customer_email}`} style={{ fontSize: 13, color: "#4a7a9b", textDecoration: "none" }}>✉️ {project.customer_email}</a>
+            )}
+            {project.customer_phone && (
+              <a href={`tel:${project.customer_phone}`} style={{ fontSize: 13, color: "#4a7a9b", textDecoration: "none" }}>📞 {project.customer_phone}</a>
+            )}
+          </div>
+        </div>
+      )}
+
+      <button onClick={generate} disabled={loading}
+        style={{
+          background: loading ? "#94a3b8" : "#4a7a9b", color: "#fff", border: "none", borderRadius: 12,
+          padding: "14px 0", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}>
+        {loading ? "🧠 Analyzing job history…" : "🧠 Generate Briefing"}
+      </button>
+
+      {error && (
+        <div style={{ background: "#fdf2f3", border: "1px solid #f5c2c7", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#d4838d" }}>{error}</div>
+      )}
+
+      {briefing && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {parseSections(briefing).map((section, i) => (
+            <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "16px 18px" }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#1a2a38", margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 18 }}>{section.icon}</span>
+                {section.title}
+              </p>
+              <p style={{ fontSize: 13, color: "#475569", margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{section.body}</p>
+            </div>
+          ))}
+          <button onClick={generate}
+            style={{ background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>
+            ↻ Regenerate
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Costs Tab ─────────────────────────────────────────────────────────────────
+interface JobCost { id: string; type: string; description: string; amount_cents: number; quantity: number; cost_date: string; created_at: string; }
+
+function CostsTab({ project, userId, role }: { project: Project; userId: string; role: string }) {
+  const supabase = createClient();
+  const canEdit = role === "owner" || role === "staff";
+  const [costs, setCosts] = useState<JobCost[]>([]);
+  const [costsLoading, setCostsLoading] = useState(true);
+  const [budgetCents, setBudgetCents] = useState<number | null>(project.budget_cents ?? null);
+  const [budgetInput, setBudgetInput] = useState(project.budget_cents ? String(project.budget_cents / 100) : "");
+  const [savingBudget, setSavingBudget] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [form, setForm] = useState({ type: "labor", description: "", quantity: "1", unit_cost: "", cost_date: new Date().toISOString().split("T")[0] });
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    supabase.from("cf_job_costs").select("*").eq("project_id", project.id).order("cost_date", { ascending: false })
+      .then(({ data }) => { setCosts(data ?? []); setCostsLoading(false); });
+  }, [project.id]);
+
+  async function saveBudget() {
+    const val = parseFloat(budgetInput);
+    if (isNaN(val) || val < 0) return;
+    setSavingBudget(true);
+    const cents = Math.round(val * 100);
+    await supabase.from("cf_projects").update({ budget_cents: cents }).eq("id", project.id);
+    setBudgetCents(cents);
+    setSavingBudget(false);
+  }
+
+  async function addCost() {
+    const desc = form.description.trim();
+    const qty = parseFloat(form.quantity) || 1;
+    const unitCents = Math.round((parseFloat(form.unit_cost) || 0) * 100);
+    if (!desc || unitCents <= 0) return;
+    setAdding(true);
+    const { data } = await supabase.from("cf_job_costs").insert({
+      project_id: project.id, created_by: userId, type: form.type,
+      description: desc, amount_cents: unitCents, quantity: qty, cost_date: form.cost_date,
+    }).select().single() as any;
+    if (data) setCosts(prev => [data, ...prev]);
+    setForm({ type: "labor", description: "", quantity: "1", unit_cost: "", cost_date: new Date().toISOString().split("T")[0] });
+    setAdding(false);
+  }
+
+  async function deleteCost(id: string) {
+    if (!confirm("Delete this cost entry?")) return;
+    setDeleting(id);
+    await supabase.from("cf_job_costs").delete().eq("id", id);
+    setCosts(prev => prev.filter(c => c.id !== id));
+    setDeleting(null);
+  }
+
+  const fmtMoney = (cents: number) => "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalCents = costs.reduce((sum, c) => sum + c.amount_cents * (c.quantity ?? 1), 0);
+  const TYPE_LABELS: Record<string, string> = { labor: "Labor", material: "Material", subcontractor: "Subcontractor", overhead: "Overhead", other: "Other" };
+  const COST_TYPES = Object.keys(TYPE_LABELS);
+  const grouped = COST_TYPES.map(t => ({
+    type: t, label: TYPE_LABELS[t],
+    items: costs.filter(c => c.type === t),
+    total: costs.filter(c => c.type === t).reduce((s, c) => s + c.amount_cents * (c.quantity ?? 1), 0),
+  })).filter(g => g.items.length > 0);
+  const remaining = budgetCents != null ? budgetCents - totalCents : null;
+
+  if (costsLoading) return <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading costs…</div>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Budget section */}
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "16px 18px" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>Project Budget</p>
+        {budgetCents != null && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 13, color: "#475569" }}>Budget: <strong style={{ color: "#1a2a38" }}>{fmtMoney(budgetCents)}</strong></span>
+              <span style={{ fontSize: 13, color: "#475569" }}>Spent: <strong style={{ color: totalCents > budgetCents ? "#dc2626" : "#1a2a38" }}>{fmtMoney(totalCents)}</strong></span>
+            </div>
+            <div style={{ height: 8, background: "#f1f5f9", borderRadius: 99, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${Math.min(100, (totalCents / budgetCents) * 100)}%`, background: totalCents > budgetCents ? "#dc2626" : "#4a7a9b", borderRadius: 99, transition: "width 0.3s" }} />
+            </div>
+          </div>
+        )}
+        {role === "owner" && (
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <input type="number" min="0" step="0.01" placeholder="Set budget ($)" value={budgetInput} onChange={e => setBudgetInput(e.target.value)}
+              style={{ flex: 1, background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#1a2a38", outline: "none" }} />
+            <button onClick={saveBudget} disabled={savingBudget}
+              style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              {savingBudget ? "…" : "Save"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Grouped cost entries */}
+      {grouped.length === 0 && (
+        <div style={{ border: "1px dashed #e2e8f0", borderRadius: 14, padding: 40, textAlign: "center" }}>
+          <p style={{ fontSize: 28, margin: "0 0 8px" }}>💵</p>
+          <p style={{ fontSize: 14, color: "#94a3b8" }}>No costs recorded yet</p>
+        </div>
+      )}
+      {grouped.map(group => (
+        <div key={group.type} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}>
+          <div style={{ padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2a38" }}>{group.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#4a7a9b" }}>{fmtMoney(group.total)}</span>
+          </div>
+          {group.items.map(c => (
+            <div key={c.id} style={{ padding: "10px 16px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#1a2a38", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.description}</p>
+                <p style={{ fontSize: 11, color: "#94a3b8", margin: 0 }}>{c.cost_date} · {c.quantity} × {fmtMoney(c.amount_cents)}</p>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a2a38", flexShrink: 0 }}>{fmtMoney(c.amount_cents * (c.quantity ?? 1))}</span>
+              {canEdit && (
+                <button onClick={() => deleteCost(c.id)} disabled={deleting === c.id}
+                  style={{ fontSize: 11, color: "#d4838d", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
+                  {deleting === c.id ? "…" : "Delete"}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* Summary footer */}
+      {costs.length > 0 && (
+        <div style={{ background: "#1a2a38", borderRadius: 14, padding: "16px 18px", color: "#fff" }}>
+          {COST_TYPES.filter(t => costs.some(c => c.type === t)).map(t => {
+            const sub = costs.filter(c => c.type === t).reduce((s, c) => s + c.amount_cents * (c.quantity ?? 1), 0);
+            return (
+              <div key={t} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 13, color: "#94a3b8" }}>Total {TYPE_LABELS[t]}</span>
+                <span style={{ fontSize: 13, color: "#e2e8f0" }}>{fmtMoney(sub)}</span>
+              </div>
+            );
+          })}
+          <div style={{ borderTop: "1px solid #2d4a60", margin: "10px 0", paddingTop: 10, display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 16, fontWeight: 800 }}>TOTAL</span>
+            <span style={{ fontSize: 16, fontWeight: 800 }}>{fmtMoney(totalCents)}</span>
+          </div>
+          {remaining != null && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 13, color: "#94a3b8" }}>Budget Remaining</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: remaining >= 0 ? "#4ade80" : "#f87171" }}>
+                {remaining >= 0 ? fmtMoney(remaining) : `-${fmtMoney(Math.abs(remaining))}`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Cost Entry form */}
+      {canEdit && (
+        <div style={{ background: "#fff", border: "1px dashed #e2e8f0", borderRadius: 14, padding: "16px 18px" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>Add Cost Entry</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+              style={{ background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#1a2a38", outline: "none" }}>
+              {COST_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+            </select>
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Description"
+              style={{ background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#1a2a38", outline: "none" }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 4 }}>Qty</label>
+                <input type="number" min="0" step="any" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 8px", fontSize: 13, color: "#1a2a38", outline: "none" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 4 }}>Unit ($)</label>
+                <input type="number" min="0" step="0.01" value={form.unit_cost} onChange={e => setForm(f => ({ ...f, unit_cost: e.target.value }))}
+                  placeholder="0.00" style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 8px", fontSize: 13, color: "#1a2a38", outline: "none" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 4 }}>Date</label>
+                <input type="date" value={form.cost_date} onChange={e => setForm(f => ({ ...f, cost_date: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 8px", fontSize: 13, color: "#1a2a38", outline: "none" }} />
+              </div>
+            </div>
+            <button onClick={addCost} disabled={adding}
+              style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              {adding ? "Adding…" : "Add Cost Entry"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
