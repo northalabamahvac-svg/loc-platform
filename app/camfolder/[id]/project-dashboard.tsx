@@ -33,6 +33,7 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
   const [logs, setLogs] = useState<DailyLog[]>(initialLogs);
   const supabase = createClient();
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+  const [businessEmail, setBusinessEmail] = useState("");
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewName, setReviewName] = useState("");
   const [reviewEmail, setReviewEmail] = useState("");
@@ -41,6 +42,7 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setGoogleReviewUrl(user?.user_metadata?.google_review_url ?? "");
+      setBusinessEmail(user?.user_metadata?.business_email ?? "");
     });
   }, [supabase]);
 
@@ -151,7 +153,10 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
 
       {/* ── Google Review Request Modal ─────────────────── */}
       {showReviewModal && (() => {
-        const msg = `Hi ${reviewName || "there"},\n\nThank you for choosing us for your${project.trade ? ` ${project.trade.toLowerCase()}` : ""} project${project.address ? ` at ${project.address}` : ""}!\n\nWe'd love to hear about your experience. If you have a moment, please consider leaving us a quick Google review — it means the world to our small team.\n\n⭐ Leave a review here:\n${googleReviewUrl || "[Add your Google Review link in Profile settings]"}\n\nThank you so much for your support!\n— The Blossomwood Building Co. Team`;
+        const signature = businessEmail
+          ? `— Blossomwood Building Co.\n📧 ${businessEmail}`
+          : `— Blossomwood Building Co.`;
+        const msg = `Hi ${reviewName || "there"},\n\nThank you for choosing us for your${project.trade ? ` ${project.trade.toLowerCase()}` : ""} project${project.address ? ` at ${project.address}` : ""}!\n\nWe'd love to hear about your experience. If you have a moment, please consider leaving us a quick Google review — it means the world to our small team.\n\n⭐ Leave a review here:\n${googleReviewUrl || "[Add your Google Review link in Profile settings]"}\n\nThank you so much for your support!\n${signature}`;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
             onClick={() => setShowReviewModal(false)}>
@@ -159,6 +164,18 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
               onClick={e => e.stopPropagation()}>
               <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e5e7eb", margin: "10px auto 20px" }} />
               <h2 style={{ fontSize: 18, fontWeight: 800, color: "#1a2a38", margin: "0 0 4px" }}>⭐ Request Google Review</h2>
+              {businessEmail && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f3f7fa", border: "1px solid #e2e8f0", borderRadius: 8, padding: "5px 10px", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>FROM</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#1a2a38" }}>{businessEmail}</span>
+                </div>
+              )}
+              {!businessEmail && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fef9ec", border: "1px solid #fcd34d", borderRadius: 8, padding: "5px 10px", marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, color: "#92400e" }}>⚠️ No send-from email set —</span>
+                  <a href="/profile" style={{ fontSize: 12, fontWeight: 700, color: "#4a7a9b", textDecoration: "none" }}>add one in Profile</a>
+                </div>
+              )}
               <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
                 {googleReviewUrl
                   ? "Fill in the customer details — we'll draft the email for you."

@@ -25,7 +25,7 @@ const labelStyle: React.CSSProperties = {
   color: "#64748b",
 };
 
-export default function ProfileForm({ currentName, email, googleReviewUrl: initialGoogleUrl }: { currentName: string; email: string; googleReviewUrl: string }) {
+export default function ProfileForm({ currentName, email, googleReviewUrl: initialGoogleUrl, businessEmail: initialBusinessEmail }: { currentName: string; email: string; googleReviewUrl: string; businessEmail: string }) {
   const [name, setName] = useState(currentName);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,6 +37,9 @@ export default function ProfileForm({ currentName, email, googleReviewUrl: initi
   const [googleUrl, setGoogleUrl] = useState(initialGoogleUrl);
   const [urlMsg, setUrlMsg] = useState("");
   const [urlSaving, setUrlSaving] = useState(false);
+  const [bizEmail, setBizEmail] = useState(initialBusinessEmail);
+  const [bizMsg, setBizMsg] = useState("");
+  const [bizSaving, setBizSaving] = useState(false);
   const supabase = createClient();
 
   async function saveName(e: React.FormEvent) {
@@ -64,6 +67,14 @@ export default function ProfileForm({ currentName, email, googleReviewUrl: initi
     const { error } = await supabase.auth.updateUser({ data: { google_review_url: googleUrl.trim() } });
     setUrlMsg(error ? `Error: ${error.message}` : "Saved!");
     setUrlSaving(false);
+  }
+
+  async function saveBizEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setBizSaving(true); setBizMsg("");
+    const { error } = await supabase.auth.updateUser({ data: { business_email: bizEmail.trim() } });
+    setBizMsg(error ? `Error: ${error.message}` : "Saved!");
+    setBizSaving(false);
   }
 
   const card: React.CSSProperties = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, marginBottom: 16 };
@@ -112,6 +123,38 @@ export default function ProfileForm({ currentName, email, googleReviewUrl: initi
           <button type="submit" disabled={changingPw || !password}
             style={{ background: "#f3f7fa", color: "#1a2a38", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: changingPw || !password ? 0.5 : 1 }}>
             {changingPw ? "Updating…" : "Update Password"}
+          </button>
+        </form>
+      </div>
+
+      {/* Business Email */}
+      <div style={card}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a2a38", margin: "0 0 4px" }}>📧 Business Email</h2>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 16px" }}>
+          This email appears as the &ldquo;sent from&rdquo; contact in review requests and customer emails.
+        </p>
+        <form onSubmit={saveBizEmail} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Send-From Email</label>
+            <input
+              type="email"
+              value={bizEmail}
+              onChange={e => setBizEmail(e.target.value)}
+              placeholder="e.g. northalabamahvac@gmail.com"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+              Customers will see this address in the review request signature.
+            </p>
+          </div>
+          {bizMsg && (
+            <p style={{ fontSize: 12, borderRadius: 8, padding: "8px 12px", background: bizMsg.startsWith("Error") ? "#fef2f2" : "#fdf2f3", color: bizMsg.startsWith("Error") ? "#dc2626" : "#d4838d" }}>
+              {bizMsg}
+            </p>
+          )}
+          <button type="submit" disabled={bizSaving}
+            style={{ background: "#4a7a9b", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: bizSaving ? 0.5 : 1 }}>
+            {bizSaving ? "Saving…" : "Save Email"}
           </button>
         </form>
       </div>
