@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import CameraButton from "./camera-button";
 
 type NavItem = { href: string; label: string; icon: string };
 const NAV: NavItem[] = [
@@ -16,7 +17,7 @@ const NAV: NavItem[] = [
   { href: "/camfolder/followups",    label: "Follow-ups", icon: "✉️" },
 ];
 
-export default function CamSidebar({ userName }: { userName: string }) {
+export default function CamSidebar({ userName, userId }: { userName: string; userId: string }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const initials = userName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
@@ -76,6 +77,10 @@ export default function CamSidebar({ userName }: { userName: string }) {
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
                 <span style={{ fontSize: 22 }}>👤</span> Profile
               </Link>
+              <Link href="/camfolder/help" onClick={() => setDrawerOpen(false)}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
+                <span style={{ fontSize: 22 }}>❓</span> Help
+              </Link>
               <Link href="/dashboard" onClick={() => setDrawerOpen(false)}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
                 <span style={{ fontSize: 22 }}>🏠</span> Main Dashboard
@@ -95,15 +100,7 @@ export default function CamSidebar({ userName }: { userName: string }) {
               </svg>
             </div>
           </Link>
-          <Link href="/camfolder/new" style={{ textDecoration: "none" }}>
-            <div style={{ background: "#1a2a38", borderRadius: 99, padding: "12px 28px", display: "flex", alignItems: "center", gap: 8 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-                <path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4z"/>
-                <path d="M9 3L7.17 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/>
-              </svg>
-              <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Camera</span>
-            </div>
-          </Link>
+          <CameraButton userId={userId} />
           <Link href="/camfolder/map" style={{ textDecoration: "none" }}>
             <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#f3f7fa", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="#1a2a38">
@@ -166,6 +163,9 @@ function SidebarContent({ pathname, userName, initials }: { pathname: string; us
         </Link>
         <Link href="/profile" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
           <span style={{ fontSize: 16 }}>👤</span> Profile
+        </Link>
+        <Link href="/camfolder/help" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
+          <span style={{ fontSize: 16 }}>❓</span> Help
         </Link>
       </div>
     </div>

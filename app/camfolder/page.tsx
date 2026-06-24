@@ -7,6 +7,7 @@ export default async function CamFolderPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  if (!user.user_metadata?.onboarded) redirect("/camfolder/welcome");
 
   const { data: memberships } = await supabase
     .from("cf_project_members")
