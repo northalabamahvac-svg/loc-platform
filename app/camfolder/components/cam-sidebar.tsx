@@ -81,10 +81,6 @@ export default function CamSidebar({ userName, userId }: { userName: string; use
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
                 <span style={{ fontSize: 22 }}>❓</span> Help
               </Link>
-              <Link href="/dashboard" onClick={() => setDrawerOpen(false)}
-                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
-                <span style={{ fontSize: 22 }}>🏠</span> Main Dashboard
-              </Link>
             </div>
           </div>
         </div>
@@ -158,9 +154,6 @@ function SidebarContent({ pathname, userName, initials }: { pathname: string; us
       </div>
       <div style={{ flex: 1 }} />
       <div style={{ borderTop: "1px solid #f1f5f9", padding: "12px 0 0" }}>
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
-          <span style={{ fontSize: 16 }}>🏠</span> Main Dashboard
-        </Link>
         <Link href="/profile" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
           <span style={{ fontSize: 16 }}>👤</span> Profile
         </Link>
