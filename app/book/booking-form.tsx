@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 const SERVICE_TYPES = ["AC Repair", "Heating", "Maintenance", "New Install", "Ductwork", "Other"];
 const TIME_SLOTS = [
@@ -33,7 +32,6 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function BookingForm() {
-  const supabase = createClient();
   const [form, setForm] = useState({
     name: "", email: "", phone: "",
     service_type: "", address: "",
@@ -55,18 +53,22 @@ export default function BookingForm() {
       return;
     }
     setSubmitting(true); setError("");
-    const { error: dbErr } = await supabase.from("cf_booking_requests").insert({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim() || null,
-      service_type: form.service_type,
-      address: form.address.trim(),
-      preferred_date: form.preferred_date || null,
-      preferred_time: form.preferred_time || null,
-      notes: form.notes.trim() || null,
-      status: "new",
+    const res = await fetch("/api/camfolder/notify-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+        service_type: form.service_type,
+        address: form.address.trim(),
+        preferred_date: form.preferred_date || null,
+        preferred_time: form.preferred_time || null,
+        notes: form.notes.trim() || null,
+      }),
     });
-    if (dbErr) { setError(dbErr.message); setSubmitting(false); return; }
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? "Submission failed"); setSubmitting(false); return; }
     setSuccess(true);
     setSubmitting(false);
   }

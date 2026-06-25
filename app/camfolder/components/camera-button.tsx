@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -31,12 +31,19 @@ export default function CameraButton({ userId }: { userId: string }) {
   const isInProject = !!segment && !NON_PROJECT_SEGMENTS.has(segment);
   const currentProjectId = isInProject ? segment : null;
 
+  const [gpsEnabled, setGpsEnabled] = useState(true);
   const [showSelector, setShowSelector] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setGpsEnabled(user?.user_metadata?.gps_enabled !== false);
+    });
+  }, [supabase]);
 
   async function loadProjects() {
     setLoadingProjects(true);
@@ -82,7 +89,7 @@ export default function CameraButton({ userId }: { userId: string }) {
     if (!projectId) return;
 
     setUploading(true);
-    const gps = await getGPS();
+    const gps = gpsEnabled ? await getGPS() : null;
 
     for (const file of files) {
       if (file.size > 15 * 1024 * 1024) continue;

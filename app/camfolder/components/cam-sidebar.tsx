@@ -1,9 +1,10 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import CameraButton from "./camera-button";
+import { createClient } from "@/lib/supabase/client";
 
 type NavItem = { href: string; label: string; icon: string };
 const NAV: NavItem[] = [
@@ -19,8 +20,15 @@ const NAV: NavItem[] = [
 
 export default function CamSidebar({ userName, userId }: { userName: string; userId: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const initials = userName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+
+  async function signOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   return (
     <>
@@ -77,10 +85,18 @@ export default function CamSidebar({ userName, userId }: { userName: string; use
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
                 <span style={{ fontSize: 22 }}>👤</span> Profile
               </Link>
+              <Link href="/camfolder/settings" onClick={() => setDrawerOpen(false)}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
+                <span style={{ fontSize: 22 }}>⚙️</span> Settings
+              </Link>
               <Link href="/camfolder/help" onClick={() => setDrawerOpen(false)}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#64748b", fontWeight: 500, fontSize: 17, textDecoration: "none" }}>
                 <span style={{ fontSize: 22 }}>❓</span> Help
               </Link>
+              <button onClick={() => { setDrawerOpen(false); signOut(); }}
+                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderRadius: 14, color: "#d4838d", fontWeight: 500, fontSize: 17, background: "none", border: "none", cursor: "pointer", width: "100%" }}>
+                <span style={{ fontSize: 22 }}>🚪</span> Sign Out
+              </button>
             </div>
           </div>
         </div>
@@ -110,13 +126,13 @@ export default function CamSidebar({ userName, userId }: { userName: string; use
       {/* ── Desktop sidebar ──────────────────────────────── */}
       <aside className="hidden lg:flex"
         style={{ width: 220, minHeight: "100vh", background: "#fff", borderRight: "1px solid #e2e8f0", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
-        <SidebarContent pathname={pathname} userName={userName} initials={initials} />
+        <SidebarContent pathname={pathname} userName={userName} initials={initials} onSignOut={signOut} />
       </aside>
     </>
   );
 }
 
-function SidebarContent({ pathname, userName, initials }: { pathname: string; userName: string; initials: string }) {
+function SidebarContent({ pathname, userName, initials, onSignOut }: { pathname: string; userName: string; initials: string; onSignOut: () => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "0 0 16px" }}>
       <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #f1f5f9" }}>
@@ -157,9 +173,15 @@ function SidebarContent({ pathname, userName, initials }: { pathname: string; us
         <Link href="/profile" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
           <span style={{ fontSize: 16 }}>👤</span> Profile
         </Link>
+        <Link href="/camfolder/settings" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
+          <span style={{ fontSize: 16 }}>⚙️</span> Settings
+        </Link>
         <Link href="/camfolder/help" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#94a3b8", fontSize: 13, textDecoration: "none" }}>
           <span style={{ fontSize: 16 }}>❓</span> Help
         </Link>
+        <button onClick={onSignOut} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 12px", marginLeft: 4, marginRight: 4, borderRadius: 8, color: "#d4838d", fontSize: 13, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left" }}>
+          <span style={{ fontSize: 16 }}>🚪</span> Sign Out
+        </button>
       </div>
     </div>
   );

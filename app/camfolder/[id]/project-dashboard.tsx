@@ -34,6 +34,9 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
   const supabase = createClient();
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
   const [businessEmail, setBusinessEmail] = useState("");
+  const [businessName, setBusinessName] = useState("Blossomwood Building Co.");
+  const [gpsEnabled, setGpsEnabled] = useState(true);
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewName, setReviewName] = useState("");
   const [reviewEmail, setReviewEmail] = useState("");
@@ -44,8 +47,12 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setGoogleReviewUrl(user?.user_metadata?.google_review_url ?? "");
-      setBusinessEmail(user?.user_metadata?.business_email ?? "");
+      const meta = user?.user_metadata ?? {};
+      setGoogleReviewUrl(meta.google_review_url ?? "");
+      setBusinessEmail(meta.business_email ?? "");
+      setBusinessName(meta.business_name ?? "Blossomwood Building Co.");
+      setGpsEnabled(meta.gps_enabled !== false);
+      setWatermarkEnabled(meta.watermark_enabled === true);
     });
   }, [supabase]);
 
@@ -134,6 +141,7 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
         {tab === "feed"         && <FeedTab photos={photos} logs={logs} />}
         {tab === "photos"       && (
           <PhotosTab project={project} photos={photos} userId={userId} role={role}
+            gpsEnabled={gpsEnabled} watermarkEnabled={watermarkEnabled} businessName={businessName}
             onAdd={p => setPhotos(prev => [p, ...prev])}
             onDelete={id => setPhotos(prev => prev.filter(p => p.id !== id))} />
         )}
@@ -262,8 +270,38 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
 }
 
 // ─── Photos Tab ────────────────────────────────────────────────────────────────
-function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
+async function applyWatermark(file: File, label: string): Promise<File> {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const barH = Math.max(36, Math.round(img.height * 0.055));
+      ctx.fillStyle = "rgba(26,42,56,0.68)";
+      ctx.fillRect(0, img.height - barH, img.width, barH);
+      const fs = Math.max(13, Math.round(img.height * 0.022));
+      ctx.font = `bold ${fs}px sans-serif`;
+      ctx.fillStyle = "#fff";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, 12, img.height - barH / 2);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(file); return; }
+        resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+      }, "image/jpeg", 0.9);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+function PhotosTab({ project, photos, userId, role, gpsEnabled, watermarkEnabled, businessName, onAdd, onDelete }: {
   project: Project; photos: Photo[]; userId: string; role: string;
+  gpsEnabled: boolean; watermarkEnabled: boolean; businessName: string;
   onAdd: (p: Photo) => void; onDelete: (id: string) => void;
 }) {
   const canUpload = role === "owner" || role === "staff";
@@ -302,10 +340,13 @@ function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setUploading(true); setError("");
-    const gps = await getGPS();
+    const gps = gpsEnabled ? await getGPS() : null;
 
-    for (const file of files) {
-      if (file.size > 15 * 1024 * 1024) { setError(`${file.name} is over 15MB — skipped.`); continue; }
+    for (const rawFile of files) {
+      if (rawFile.size > 15 * 1024 * 1024) { setError(`${rawFile.name} is over 15MB — skipped.`); continue; }
+      const file = (watermarkEnabled && rawFile.type.startsWith("image/"))
+        ? await applyWatermark(rawFile, businessName)
+        : rawFile;
       const ext = file.name.split(".").pop() ?? "jpg";
       const path = `${userId}/${project.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: upErr } = await supabase.storage.from("camfolder-photos").upload(path, file, { upsert: false });
@@ -389,7 +430,9 @@ function PhotosTab({ project, photos, userId, role, onAdd, onDelete }: {
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={upload} />
           {error && <p className="text-xs rounded-lg px-3 py-2" style={{ background: "rgba(220,38,38,0.15)", color: "var(--red-t)" }}>{error}</p>}
-          <p className="text-xs" style={{ color: "var(--muted)" }}>GPS location is captured automatically · Max 15MB per file</p>
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            {gpsEnabled ? "📍 GPS on" : "GPS off"}{watermarkEnabled ? " · 🔏 Watermark on" : ""} · Max 15MB per file
+          </p>
         </div>
       </div>}
 
