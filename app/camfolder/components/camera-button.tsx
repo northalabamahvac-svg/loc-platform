@@ -134,11 +134,12 @@ export default function CameraButton({ userId }: { userId: string }) {
       {showSelector && (
         <div style={{ position: "fixed", inset: 0, zIndex: 70, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div style={{ flex: 1, background: "rgba(0,0,0,0.5)" }} onClick={() => setShowSelector(false)} />
-          <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "8px 0 48px", maxHeight: "60vh", display: "flex", flexDirection: "column" }}>
+          <div style={{ background: "#fff", borderRadius: "24px 24px 0 0", padding: "8px 0 0", maxHeight: "60vh", display: "flex", flexDirection: "column" }}>
             <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e5e7eb", margin: "8px auto 0", flexShrink: 0 }} />
-            <p style={{ fontSize: 17, fontWeight: 800, color: "#1a2a38", padding: "16px 20px 0", margin: 0, flexShrink: 0 }}>
-              📸 Which project?
-            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 0", flexShrink: 0 }}>
+              <p style={{ fontSize: 17, fontWeight: 800, color: "#1a2a38", margin: 0 }}>📸 Which project?</p>
+              <button onClick={() => setShowSelector(false)} style={{ background: "#f1f5f9", border: "none", borderRadius: 99, width: 32, height: 32, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>×</button>
+            </div>
             <p style={{ fontSize: 13, color: "#94a3b8", padding: "4px 20px 12px", margin: 0, flexShrink: 0 }}>
               Choose a project to attach this photo or video to
             </p>
@@ -164,6 +165,11 @@ export default function CameraButton({ userId }: { userId: string }) {
                   </button>
                 ))
               )}
+            </div>
+            <div style={{ padding: "12px 16px 40px", flexShrink: 0 }}>
+              <button onClick={() => setShowSelector(false)} style={{ width: "100%", padding: "14px", borderRadius: 14, background: "#f1f5f9", border: "none", fontSize: 16, fontWeight: 700, color: "#64748b", cursor: "pointer" }}>
+                Cancel
+              </button>
             </div>
           </div>
         </div>
