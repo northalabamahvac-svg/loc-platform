@@ -6,15 +6,16 @@ import Link from "next/link";
 import ThemePicker from "@/components/theme-picker";
 import SignOutButton from "@/components/sign-out-button";
 
-interface Project { id: string; name: string; address: string | null; trade: string | null; status: string; budget_cents?: number | null; customer_name?: string | null; customer_email?: string | null; customer_phone?: string | null; }
+interface Project { id: string; name: string; address: string | null; trade: string | null; status: string; budget_cents?: number | null; customer_name?: string | null; customer_email?: string | null; customer_phone?: string | null; site_lat?: number | null; site_lng?: number | null; site_radius_m?: number | null; }
 interface Photo { id: string; storage_url: string; note: string | null; tags: string[] | null; gps_lat: number | null; gps_lng: number | null; taken_at: string; }
 interface DailyLog { id: string; log_date: string; content: string; raw_notes: string | null; created_at: string; }
 interface Checklist { id: string; name: string; created_at: string; }
 interface ChecklistItem { id: string; checklist_id: string; label: string; requires_photo: boolean; position: number; completed_at: string | null; completed_by: string | null; photo_url: string | null; }
 interface SigRequest { id: string; title: string; message: string | null; token: string; status: string; signer_name: string | null; signed_at: string | null; signature_url: string | null; created_at: string; }
+interface TimeRecord { id: string; user_id: string; clock_in_at: string; clock_in_type: string; clock_in_verified: boolean; clock_in_distance_m: number | null; clock_out_at: string | null; clock_out_type: string | null; }
 
 interface Comment { id: string; user_id: string; content: string; created_at: string; }
-type Tab = "feed" | "photos" | "before-after" | "checklist" | "daily-log" | "walkthrough" | "recap" | "past-logs" | "signatures" | "share" | "team" | "estimates" | "briefing" | "costs";
+type Tab = "feed" | "photos" | "before-after" | "checklist" | "daily-log" | "walkthrough" | "recap" | "past-logs" | "signatures" | "share" | "team" | "estimates" | "briefing" | "costs" | "timeclock";
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surfB)", border: "1px solid var(--bdr)", color: "var(--txt)",
@@ -58,6 +59,7 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
 
   const ROW1: { key: Tab; label: string; fullLabel: string }[] = [
     { key: "feed",         label: "📰", fullLabel: "Feed" },
+    { key: "timeclock",    label: "⏱️", fullLabel: "Time" },
     { key: "photos",       label: "📷", fullLabel: "Photos" },
     { key: "before-after", label: "↔️",  fullLabel: "Before/After" },
     { key: "checklist",    label: "✅", fullLabel: "Checklist" },
@@ -139,6 +141,7 @@ export default function ProjectDashboard({ project, initialPhotos, initialLogs, 
 
       <main style={{ maxWidth: 860, margin: "0 auto", padding: "20px 16px 80px" }}>
         {tab === "feed"         && <FeedTab photos={photos} logs={logs} />}
+        {tab === "timeclock"    && <TimeclockTab project={project} userId={userId} role={role} />}
         {tab === "photos"       && (
           <PhotosTab project={project} photos={photos} userId={userId} role={role}
             gpsEnabled={gpsEnabled} watermarkEnabled={watermarkEnabled} businessName={businessName}
@@ -2280,6 +2283,207 @@ function CostsTab({ project, userId, role }: { project: Project; userId: string;
               {adding ? "Adding…" : "Add Cost Entry"}
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Timeclock Tab ─────────────────────────────────────────────────────────────
+function fmtDurMin(min: number) {
+  if (min < 60) return `${min}m`;
+  return `${Math.floor(min / 60)}h ${min % 60}m`;
+}
+
+function fmtClockTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function fmtClockDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function getClockGPS(): Promise<{ lat: number; lng: number } | null> {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve(null),
+      { timeout: 6000 }
+    );
+  });
+}
+
+function TimeclockTab({ project, userId, role }: { project: Project; userId: string; role: string }) {
+  const supabase = createClient();
+  const [records, setRecords] = useState<TimeRecord[]>([]);
+  const [openShift, setOpenShift] = useState<TimeRecord | null>(null);
+  const [elapsed, setElapsed] = useState("");
+  const [punching, setPunching] = useState(false);
+  const [punchResult, setPunchResult] = useState<string>("");
+  const [settingSite, setSettingSite] = useState(false);
+  const [siteStatus, setSiteStatus] = useState<string>("");
+  const [liveIn, setLiveIn] = useState<{ user_id: string; clock_in_at: string; clock_in_verified: boolean }[]>([]);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const nfcUrl = `${siteUrl}/timeclock/tap/${project.id}`;
+  const hasSite = !!project.site_lat;
+
+  useEffect(() => {
+    supabase.from("cf_timeclock").select("*").eq("project_id", project.id)
+      .order("clock_in_at", { ascending: false }).limit(50)
+      .then(({ data }) => {
+        const all = (data ?? []) as TimeRecord[];
+        setRecords(all);
+        const mine = all.find(r => r.user_id === userId && !r.clock_out_at);
+        setOpenShift(mine ?? null);
+        setLiveIn(all.filter(r => !r.clock_out_at));
+      });
+  }, [supabase, project.id, userId]);
+
+  useEffect(() => {
+    if (!openShift) return;
+    const tick = () => {
+      const min = Math.floor((Date.now() - new Date(openShift.clock_in_at).getTime()) / 60000);
+      setElapsed(fmtDurMin(min));
+    };
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [openShift]);
+
+  async function punch(type: "gps" | "manual") {
+    setPunching(true); setPunchResult("");
+    const gps = type === "gps" ? await getClockGPS() : null;
+    const res = await fetch("/api/timeclock/punch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: project.id, type, gps_lat: gps?.lat ?? null, gps_lng: gps?.lng ?? null }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setPunchResult(`Error: ${data.error}`); setPunching(false); return; }
+    const action = data.action === "in" ? "Clocked In ✅" : "Clocked Out 👋";
+    const dist = data.distance_m != null ? ` · ${data.distance_m}m from site` : "";
+    const ver = data.verified ? " · On-site verified" : data.distance_m != null ? " · Outside range ⚠️" : "";
+    setPunchResult(`${action}${dist}${ver}`);
+    if (data.action === "in") {
+      setOpenShift(data.record);
+    } else {
+      setOpenShift(null);
+      setRecords(prev => prev.map(r => r.id === data.record.id ? data.record : r));
+    }
+    setPunching(false);
+  }
+
+  async function setSiteLocation() {
+    setSettingSite(true); setSiteStatus("");
+    const gps = await getClockGPS();
+    if (!gps) { setSiteStatus("Could not get GPS — try again outside"); setSettingSite(false); return; }
+    const res = await fetch("/api/timeclock/set-site", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: project.id, lat: gps.lat, lng: gps.lng, radius_m: 150 }),
+    });
+    const data = await res.json();
+    setSiteStatus(res.ok ? `✅ Site location set (${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}) · 150m radius` : `Error: ${data.error}`);
+    setSettingSite(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* My punch card */}
+      <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+        <h3 className="text-sm font-bold mb-3" style={{ color: "var(--txt-hi)" }}>My Time</h3>
+        {openShift && (
+          <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 12, padding: "12px 16px", marginBottom: 12, textAlign: "center" }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#166534", margin: "0 0 2px", textTransform: "uppercase" }}>Clocked In</p>
+            <p style={{ fontSize: 26, fontWeight: 800, color: "#15803d", margin: 0 }}>{elapsed || "…"}</p>
+            <p style={{ fontSize: 11, color: "#4ade80", margin: "2px 0 0" }}>
+              Since {fmtClockTime(openShift.clock_in_at)} · {openShift.clock_in_type.toUpperCase()}
+              {openShift.clock_in_verified ? " ✅" : ""}
+            </p>
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => punch("gps")} disabled={punching}
+            style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", fontWeight: 700, fontSize: 14, cursor: punching ? "default" : "pointer", opacity: punching ? 0.6 : 1,
+              background: openShift ? "#d4838d" : "#1a2a38", color: "#fff" }}>
+            {punching ? "Recording…" : openShift ? "🔴 Clock Out" : "🟢 Clock In (GPS)"}
+          </button>
+          {!openShift && (
+            <button onClick={() => punch("manual")} disabled={punching}
+              style={{ padding: "11px 16px", borderRadius: 10, border: "1px solid var(--bdr)", fontWeight: 600, fontSize: 13, cursor: "pointer", background: "var(--surfB)", color: "var(--muted-hi)" }}>
+              Manual
+            </button>
+          )}
+        </div>
+        {punchResult && <p style={{ fontSize: 12, color: "#4a7a9b", marginTop: 8, textAlign: "center" }}>{punchResult}</p>}
+      </div>
+
+      {/* NFC tag + site setup (owner only) */}
+      {role === "owner" && (
+        <div className="rounded-2xl p-4" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "var(--txt-hi)" }}>📱 NFC Tag Setup</h3>
+          <p className="text-xs mb-2" style={{ color: "var(--muted)" }}>Program this URL onto an NTAG213 sticker and stick it at the job site:</p>
+          <div style={{ background: "var(--surfB)", border: "1px solid var(--bdr)", borderRadius: 8, padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "var(--txt)", wordBreak: "break-all", marginBottom: 12 }}>
+            {nfcUrl}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => navigator.clipboard.writeText(nfcUrl)}
+              style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--bdr)", fontSize: 12, fontWeight: 600, cursor: "pointer", background: "var(--surfB)", color: "var(--txt)" }}>
+              📋 Copy URL
+            </button>
+            <button onClick={setSiteLocation} disabled={settingSite}
+              style={{ padding: "8px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 700, cursor: settingSite ? "default" : "pointer", opacity: settingSite ? 0.6 : 1, background: "#4a7a9b", color: "#fff" }}>
+              {settingSite ? "Getting GPS…" : hasSite ? "📍 Update Site GPS" : "📍 Set Site GPS"}
+            </button>
+          </div>
+          {hasSite && !siteStatus && (
+            <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 8 }}>
+              Site: {project.site_lat?.toFixed(5)}, {project.site_lng?.toFixed(5)} · {project.site_radius_m ?? 150}m radius
+            </p>
+          )}
+          {siteStatus && <p style={{ fontSize: 12, color: "#4a7a9b", marginTop: 8 }}>{siteStatus}</p>}
+        </div>
+      )}
+
+      {/* Currently clocked in */}
+      {liveIn.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: "#f0fdf4", border: "1px solid #86efac" }}>
+          <h3 className="text-sm font-bold mb-2" style={{ color: "#166534" }}>🟢 On Site Now</h3>
+          {liveIn.map(r => (
+            <div key={r.user_id} style={{ fontSize: 13, color: "#15803d", padding: "2px 0" }}>
+              {r.user_id === userId ? "You" : r.user_id.slice(0, 8)} · In at {fmtClockTime(r.clock_in_at)}
+              {r.clock_in_verified ? " ✅" : ""}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Records */}
+      {records.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surf)", border: "1px solid var(--bdr)" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", padding: "12px 16px 8px", textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>Recent Records</p>
+          {records.slice(0, 20).map((r, i) => {
+            const min = r.clock_out_at
+              ? Math.floor((new Date(r.clock_out_at).getTime() - new Date(r.clock_in_at).getTime()) / 60000)
+              : Math.floor((Date.now() - new Date(r.clock_in_at).getTime()) / 60000);
+            return (
+              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: i > 0 ? "1px solid var(--bdr)" : "none" }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--txt-hi)", margin: 0 }}>
+                    {fmtClockDate(r.clock_in_at)} · {fmtClockTime(r.clock_in_at)} → {r.clock_out_at ? fmtClockTime(r.clock_out_at) : "Active"}
+                  </p>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: "1px 0 0" }}>
+                    {r.clock_in_type.toUpperCase()}{r.clock_in_verified ? " ✅" : " ⚠️"}
+                    {r.user_id !== userId ? ` · ${r.user_id.slice(0, 8)}` : ""}
+                  </p>
+                </div>
+                <p style={{ fontSize: 15, fontWeight: 800, color: r.clock_out_at ? "var(--txt-hi)" : "#15803d", margin: 0 }}>
+                  {fmtDurMin(min)}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

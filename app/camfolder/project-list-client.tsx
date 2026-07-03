@@ -122,81 +122,42 @@ export default function ProjectListClient({ projects, userName }: { projects: Pr
             </Link>
           </div>
         ) : (
-          <>
-            {/* Mobile: full-bleed photo cards */}
-            <div className="sm:hidden" style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-              {visible.map(p => (
-                <Link key={p.id} href={`/camfolder/${p.id}`} style={{ textDecoration: "none" }}>
-                  <div style={{ borderRadius: 18, overflow: "hidden", position: "relative", height: 200, background: "#1e293b", boxShadow: "0 2px 12px rgba(0,0,0,0.12)" }}>
-                    {p.photos[0] ? (
-                      <img src={p.photos[0].url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    ) : (
-                      <div style={{ width: "100%", height: "100%", background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>📷</div>
-                    )}
-                    {/* Gradient overlay */}
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)" }} />
-                    {/* Star */}
-                    <button onClick={e => e.preventDefault()} style={{ position: "absolute", top: 12, left: 12, background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)" }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                      </svg>
-                    </button>
-                    {/* Camera icon */}
-                    <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(255,255,255,0.2)", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4z"/>
-                        <path d="M9 3L7.17 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/>
-                      </svg>
-                    </div>
-                    {/* Text overlay */}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 14px" }}>
-                      <p style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
-                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {p.address ?? p.trade ?? "No address"}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Desktop: info + thumbnail grid cards */}
-            <div className="hidden sm:flex" style={{ flexDirection: "column", gap: 12, padding: "12px 24px" }}>
-              {visible.map(p => (
-                <Link key={p.id} href={`/camfolder/${p.id}`} style={{ textDecoration: "none" }}>
-                  <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "20px 24px", display: "flex", gap: 24, alignItems: "flex-start", transition: "box-shadow 0.15s", cursor: "pointer" }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)")}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h2 style={{ fontSize: 17, fontWeight: 700, color: "#1a2a38", margin: "0 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</h2>
-                      {p.address && <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 2px" }}>📍 {p.address}</p>}
-                      {p.trade && <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px" }}>{p.trade}</p>}
-                      <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 14px" }}>Last Updated {formatDate(p.created_at)}</p>
-                      <div style={{ display: "flex", gap: 28 }}>
-                        <div>
-                          <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Photos</p>
-                          <p style={{ fontSize: 22, fontWeight: 800, color: "#1a2a38", margin: 0 }}>{p.photoCount}</p>
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 11, color: "#94a3b8", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Role</p>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: p.myRole === "owner" ? "#4a7a9b" : "#475569", margin: 0, textTransform: "capitalize" }}>{p.myRole}</p>
-                        </div>
+          <div style={{ flexDirection: "column", gap: 12, padding: "12px 16px", display: "flex" }}
+            className="sm:px-6">
+            {visible.map(p => (
+              <Link key={p.id} href={`/camfolder/${p.id}`} style={{ textDecoration: "none" }}>
+                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "16px 18px", display: "flex", gap: 16, alignItems: "flex-start", transition: "box-shadow 0.15s", cursor: "pointer" }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)")}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1a2a38", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</h2>
+                    {p.address && <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {p.address}</p>}
+                    {p.trade && <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 8px" }}>{p.trade}</p>}
+                    <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>Updated {formatDate(p.created_at)}</p>
+                    <div style={{ display: "flex", gap: 20 }}>
+                      <div>
+                        <p style={{ fontSize: 10, color: "#94a3b8", margin: "0 0 1px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Photos</p>
+                        <p style={{ fontSize: 20, fontWeight: 800, color: "#1a2a38", margin: 0 }}>{p.photoCount}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 10, color: "#94a3b8", margin: "0 0 1px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Role</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: p.myRole === "owner" ? "#4a7a9b" : "#475569", margin: 0, textTransform: "capitalize" }}>{p.myRole}</p>
                       </div>
                     </div>
-                    {p.photos.length > 0 ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 72px)", gridTemplateRows: "repeat(2, 72px)", gap: 4, flexShrink: 0 }}>
-                        {p.photos.slice(0, 6).map((photo, i) => (
-                          <img key={i} src={photo.url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, display: "block" }} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ width: 220, height: 148, borderRadius: 10, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 36 }}>📷</div>
-                    )}
                   </div>
-                </Link>
-              ))}
-            </div>
-          </>
+                  {p.photos.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 56px)", gridTemplateRows: "repeat(2, 56px)", gap: 3, flexShrink: 0 }}>
+                      {p.photos.slice(0, 6).map((photo, i) => (
+                        <img key={i} src={photo.url} alt="" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 7, display: "block" }} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ width: 115, height: 115, borderRadius: 10, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 30 }}>📷</div>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
 
         {/* ── Mobile: Activity strip ────────────────────────── */}

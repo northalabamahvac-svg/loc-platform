@@ -8,7 +8,7 @@ interface Project { id: string; name: string; }
 
 const NON_PROJECT_SEGMENTS = new Set([
   "", "new", "welcome", "help", "map", "templates",
-  "bookings", "dispatch", "analytics", "memberships", "followups",
+  "bookings", "dispatch", "analytics", "memberships", "followups", "timeclock", "settings",
 ]);
 
 async function getGPS(): Promise<{ lat: number; lng: number } | null> {

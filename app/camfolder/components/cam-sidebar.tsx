@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 type NavItem = { href: string; label: string; icon: string };
 const NAV: NavItem[] = [
   { href: "/camfolder",              label: "Projects",   icon: "🏗️" },
+  { href: "/camfolder/timeclock",    label: "Time Clock", icon: "⏱️" },
   { href: "/camfolder/map",          label: "Live Map",   icon: "📍" },
   { href: "/camfolder/templates",    label: "Templates",  icon: "📋" },
   { href: "/camfolder/bookings",     label: "Bookings",   icon: "📥" },

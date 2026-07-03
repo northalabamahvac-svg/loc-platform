@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_EMAIL ?? "";
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD ?? "";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (window.location.hostname === "localhost") {
+      if (DEV_EMAIL) setEmail(DEV_EMAIL);
+      if (DEV_PASSWORD) setPassword(DEV_PASSWORD);
+    }
+  }, []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -21,7 +31,8 @@ export default function LoginForm() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/camfolder");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next ?? "/camfolder");
       router.refresh();
     }
   }
