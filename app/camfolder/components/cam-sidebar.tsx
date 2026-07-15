@@ -12,7 +12,6 @@ const NAV: NavItem[] = [
   { href: "/camfolder/timeclock",    label: "Time Clock", icon: "⏱️" },
   { href: "/camfolder/map",          label: "Live Map",   icon: "📍" },
   { href: "/camfolder/templates",    label: "Templates",  icon: "📋" },
-  { href: "/camfolder/surveys",      label: "Surveys",    icon: "❄️" },
   { href: "/camfolder/bookings",     label: "Bookings",   icon: "📥" },
   { href: "/camfolder/dispatch",     label: "Dispatch",   icon: "📅" },
   { href: "/camfolder/analytics",    label: "Analytics",  icon: "📊" },

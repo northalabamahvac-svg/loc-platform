@@ -22,7 +22,7 @@ export default async function SurveysPage() {
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1a2a38", margin: "0 0 4px" }}>❄️ System Surveys</h1>
             <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Replacement estimate walkthroughs — gather everything the office needs to build the quote</p>
           </div>
-          <Link href="/camfolder/surveys/new"
+          <Link href="/surveys/new"
             style={{ background: "#4a7a9b", color: "#fff", fontWeight: 700, fontSize: 13, padding: "10px 18px", borderRadius: 10, textDecoration: "none", flexShrink: 0 }}>
             + New Survey
           </Link>

@@ -64,7 +64,7 @@ export default function SurveysClient({ surveys }: { surveys: SurveyListRow[] })
         <div style={{ textAlign: "center", padding: 48, background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0" }}>
           <p style={{ fontSize: 28, marginBottom: 8 }}>❄️</p>
           <p style={{ color: "#94a3b8", fontSize: 14, margin: "0 0 16px" }}>No surveys yet — start one at the customer&apos;s house</p>
-          <Link href="/camfolder/surveys/new" style={{ background: "#4a7a9b", color: "#fff", fontWeight: 700, fontSize: 13, padding: "10px 18px", borderRadius: 10, textDecoration: "none" }}>
+          <Link href="/surveys/new" style={{ background: "#4a7a9b", color: "#fff", fontWeight: 700, fontSize: 13, padding: "10px 18px", borderRadius: 10, textDecoration: "none" }}>
             + New Survey
           </Link>
         </div>
@@ -75,7 +75,7 @@ export default function SurveysClient({ surveys }: { surveys: SurveyListRow[] })
           const ss = STATUS_STYLE[s.status] ?? STATUS_STYLE.draft;
           const missing = s.status === "draft" ? missingRequired(s.data).length : 0;
           return (
-            <Link key={s.id} href={`/camfolder/surveys/${s.id}`} style={{ textDecoration: "none" }}>
+            <Link key={s.id} href={`/surveys/${s.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #e2e8f0", padding: "18px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                   <div style={{ minWidth: 0 }}>

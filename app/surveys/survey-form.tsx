@@ -69,7 +69,7 @@ export default function SurveyForm({ initialSurvey }: { initialSurvey: SurveyRow
       id = inserted.id as string;
       setSurveyId(id);
       // Keep the URL in sync without remounting the form
-      window.history.replaceState(null, "", `/camfolder/surveys/${id}`);
+      window.history.replaceState(null, "", `/surveys/${id}`);
     }
     setDirty(false);
     setSaving(false);
