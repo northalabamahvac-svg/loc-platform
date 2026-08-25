@@ -13,6 +13,13 @@ export const theme = {
   text: "#e5e7eb",
   textMuted: "#9ca3af",
   green: "#22c55e",
+  // Sampled directly from the NAHA logo mark
+  logoBlack: "#101010",
+  logoRed: "#a81820",
+  logoRedDeep: "#7d1018",
+  logoBlue: "#185090",
+  logoBlueDeep: "#0f3a6e",
+  gold: "#e8b030",
 };
 
 export const FPS = 30;
