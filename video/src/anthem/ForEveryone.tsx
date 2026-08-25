@@ -1,72 +1,109 @@
-import { AbsoluteFill, Series } from "remotion";
-import { TextBeat } from "./TextBeat";
-import { PhotoBeat } from "./PhotoBeat";
+import { AbsoluteFill } from "remotion";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { PhotoScene } from "./PhotoScene";
 import { FinaleBeat } from "./FinaleBeat";
 import { useInterFont } from "../components/Fonts";
 
 const fontFamily =
   'Inter, "Helvetica Neue", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif';
 
-const BEAT = 75; // 2.5s per beat @ 30fps, hard cuts like the reference spot
-const FINALE = 150; // 5s closing card
+const SCENE = 156; // 5.2s per photo scene, two supers each
+const FINALE = 210; // 7s closing card
+const XFADE = 18; // 0.6s crossfade between scenes
 
-export const FOR_EVERYONE_DURATION = BEAT * 10 + FINALE; // 900 frames = 30s
+// 5 scenes + finale, minus the 5 overlapping crossfades = 900 frames (30s)
+export const FOR_EVERYONE_DURATION = SCENE * 5 + FINALE - XFADE * 5;
 
-// NAHA anthem spot modeled on Coca-Cola "For Everyone": ten rapid
-// "For the ..." beats alternating the logo's red and blue, three real
-// project photos in the mix, closing on the mark itself.
+// NAHA anthem modeled on Coca-Cola "For Everyone", cut as a continuous
+// montage: photos drift under a consistent dark grade, "For the ..."
+// supers dissolve in rhythm, every scene change is a crossfade — no hard
+// cuts, no solid-color cards.
 export const ForEveryone = () => {
   useInterFont();
+  const transition = (
+    <TransitionSeries.Transition
+      presentation={fade()}
+      timing={linearTiming({ durationInFrames: XFADE })}
+    />
+  );
   return (
-    <AbsoluteFill style={{ background: "#101010", fontFamily }}>
-      <Series>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="red" line={["For the", "100° Julys."]} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="blue" line={["For the", "frozen Januarys."]} fontSize={104} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="red" line={["For the", "2 a.m. breakdowns."]} fontSize={92} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <PhotoBeat
+    <AbsoluteFill style={{ background: "#0a101a", fontFamily }}>
+      <TransitionSeries>
+        <TransitionSeries.Sequence durationInFrames={SCENE}>
+          <PhotoScene
             src="brand/project-1.webp"
-            line={["For the", "just-moved-in."]}
-            durationInFrames={BEAT}
+            motion="in"
+            durationInFrames={SCENE}
+            superOutEarly={22}
+            lines={[
+              { text: ["For the", "100° Julys."] },
+              { text: ["For the", "frozen Januarys."], fontSize: 94 },
+            ]}
           />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="blue" line={["For the", "works-from-home."]} fontSize={98} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="red" line={["For the", "family cookouts."]} fontSize={104} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <PhotoBeat
+        </TransitionSeries.Sequence>
+        {transition}
+        <TransitionSeries.Sequence durationInFrames={SCENE}>
+          <PhotoScene
             src="brand/project-5.webp"
-            line={["For the", "grandparents’ place."]}
-            fontSize={88}
-            durationInFrames={BEAT}
+            motion="out"
+            durationInFrames={SCENE}
+            superInDelay={14}
+            superOutEarly={22}
+            lines={[
+              { text: ["For the", "2 a.m. breakdowns."], fontSize: 88 },
+              { text: ["For the", "just-moved-in."] },
+            ]}
           />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="blue" line={["For the", "sleeps-best-cold."]} fontSize={100} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <TextBeat bg="red" line={["For the", "30-year customers."]} fontSize={92} />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={BEAT}>
-          <PhotoBeat
+        </TransitionSeries.Sequence>
+        {transition}
+        <TransitionSeries.Sequence durationInFrames={SCENE}>
+          <PhotoScene
+            src="brand/project-3.webp"
+            motion="in"
+            durationInFrames={SCENE}
+            superInDelay={14}
+            superOutEarly={22}
+            lines={[
+              { text: ["For the", "family cookouts."], fontSize: 94 },
+              { text: ["For the", "works-from-home."], fontSize: 90 },
+            ]}
+          />
+        </TransitionSeries.Sequence>
+        {transition}
+        <TransitionSeries.Sequence durationInFrames={SCENE}>
+          <PhotoScene
+            src="brand/project-4.webp"
+            motion="out"
+            durationInFrames={SCENE}
+            focus="50% 40%"
+            superInDelay={14}
+            superOutEarly={22}
+            lines={[
+              { text: ["For the", "grandparents’ place."], fontSize: 84 },
+              { text: ["For the", "sleeps-best-cold."], fontSize: 92 },
+            ]}
+          />
+        </TransitionSeries.Sequence>
+        {transition}
+        <TransitionSeries.Sequence durationInFrames={SCENE}>
+          <PhotoScene
             src="brand/project-2.webp"
-            line={["For every home", "in the Valley."]}
-            durationInFrames={BEAT}
+            motion="in"
+            durationInFrames={SCENE}
+            superInDelay={14}
+            superOutEarly={22}
+            lines={[
+              { text: ["For the", "30-year customers."], fontSize: 88 },
+              { text: ["For every home", "in the Valley."], fontSize: 94 },
+            ]}
           />
-        </Series.Sequence>
-        <Series.Sequence durationInFrames={FINALE}>
+        </TransitionSeries.Sequence>
+        {transition}
+        <TransitionSeries.Sequence durationInFrames={FINALE}>
           <FinaleBeat />
-        </Series.Sequence>
-      </Series>
+        </TransitionSeries.Sequence>
+      </TransitionSeries>
     </AbsoluteFill>
   );
 };

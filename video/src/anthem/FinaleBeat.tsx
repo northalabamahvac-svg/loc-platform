@@ -16,41 +16,38 @@ const SPARKLES = Array.from({ length: 9 }).map((_, i) => {
   const angle = Math.PI + (i / 8) * Math.PI; // 180°..360° = upward fan
   const distance = 340 + (seed % 120);
   const size = i % 2 === 0 ? 30 : 20;
-  const delay = 4 + (seed % 6);
+  const delay = 10 + (seed % 6);
   return { angle, distance, size, delay };
 });
 
-// Closing card, Coke-style: clean white field, the NAHA mark slamming in,
-// "For everyone." underneath, then phone + URL. No fade to black — the
-// spot ends holding on the brand.
+// Closing card. The scene crossfades in from the last photo, so all
+// elements are present from frame 0 and only settle gently — no slam,
+// no blank white moment.
 export const FinaleBeat: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const slam = spring({
+  const settle = spring({
     frame,
     fps,
-    config: { damping: 13, mass: 0.9, stiffness: 160 },
+    config: { damping: 30, mass: 1.2, stiffness: 60 },
   });
-  const logoScale = interpolate(slam, [0, 1], [2.1, 1]);
-  const logoOpacity = interpolate(frame, [0, 5], [0, 1], {
-    extrapolateRight: "clamp",
-  });
+  const logoScale = interpolate(settle, [0, 1], [1.07, 1]);
 
-  const lineSpring = spring({
-    frame: frame - 14,
+  const lineRise = spring({
+    frame: frame - 8,
     fps,
-    config: { damping: 14, mass: 0.8, stiffness: 180 },
+    config: { damping: 32, mass: 1.1, stiffness: 70 },
   });
-  const lineY = interpolate(lineSpring, [0, 1], [60, 0]);
-  const lineOpacity = interpolate(frame, [14, 24], [0, 1], {
+  const lineY = interpolate(lineRise, [0, 1], [30, 0]);
+  const lineOpacity = interpolate(frame, [6, 26], [0, 1], {
     extrapolateRight: "clamp",
   });
 
-  const ctaOpacity = interpolate(frame, [34, 48], [0, 1], {
+  const ctaOpacity = interpolate(frame, [30, 52], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const pulse = 1 + 0.015 * Math.sin(frame * 0.18);
+  const pulse = 1 + 0.012 * Math.sin(frame * 0.14);
 
   return (
     <AbsoluteFill
@@ -60,21 +57,21 @@ export const FinaleBeat: React.FC = () => {
         alignItems: "center",
       }}
     >
-      {/* gold sparkle burst behind the logo */}
+      {/* gold sparkle drift above the logo */}
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
         {SPARKLES.map((p, i) => {
           const pFrame = Math.max(0, frame - p.delay);
           const s = spring({
             frame: pFrame,
             fps,
-            config: { damping: 26, mass: 1.3, stiffness: 70 },
+            config: { damping: 30, mass: 1.5, stiffness: 50 },
           });
           const px = Math.max(
             -440,
             Math.min(440, Math.cos(p.angle) * p.distance * s)
           );
           const py = Math.sin(p.angle) * p.distance * s - 330;
-          const sparkOpacity = interpolate(pFrame, [0, 10, 40], [0, 0.9, 0], {
+          const sparkOpacity = interpolate(pFrame, [0, 14, 55], [0, 0.85, 0], {
             extrapolateRight: "clamp",
           });
           return (
@@ -114,7 +111,6 @@ export const FinaleBeat: React.FC = () => {
             width: 860,
             height: "auto",
             transform: `scale(${logoScale})`,
-            opacity: logoOpacity,
           }}
         />
 
